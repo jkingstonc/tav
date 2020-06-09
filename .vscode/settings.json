@@ -1,0 +1,11 @@
+{
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": ".go",
+                "isAsync": true,
+                "cmd": "make"
+            },
+        ]
+    }
+}
