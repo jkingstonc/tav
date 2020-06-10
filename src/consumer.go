@@ -1,7 +1,15 @@
 package src
 
 type LexConsumer struct {
-	Source string
+	Source   string
+	Reporter LexReporter
+}
+
+func NewLexConsumer(source string, reporter LexReporter) LexConsumer {
+	return LexConsumer{
+		Source:   source,
+		Reporter: reporter,
+	}
 }
 
 func (lexConsumer *LexConsumer) Peek() rune {
@@ -13,5 +21,6 @@ func (lexConsumer *LexConsumer) Consume(char rune) rune {
 }
 
 func (lexConsumer *LexConsumer) Advance() rune {
+	lexConsumer.Reporter.Position.Indent++
 	return '0'
 }

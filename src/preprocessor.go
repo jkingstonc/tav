@@ -1,15 +1,28 @@
 package src
 
 type Preprocessor struct {
+	Compiler *Compiler
+	Reporter LexReporter
+	Consumer LexConsumer
 	SymTable *SymTable
 }
 
 func Preprocess(compiler *Compiler, source string) string {
+
+	reporter := NewLexReporter()
+	consumer := NewLexConsumer(source, reporter)
+
 	preprocessor := &Preprocessor{
+		Compiler: compiler,
+		Reporter: LexReporter{},
+		Consumer: consumer,
 		SymTable: &SymTable{
-			Symbols: make(map[uint32]Symbol),
+			SymbolID: make(map[string]uint32),
+			Symbols:  make(map[uint32]Symbol),
 		},
 	}
-	preprocessor.SymTable.Add("test", SYM_STRUCT, 0)
+
+	preprocessor.Consumer.Advance()
+
 	return source
 }

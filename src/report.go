@@ -21,6 +21,10 @@ type LexReporter struct {
 	Position    Position
 }
 
+func NewLexReporter() LexReporter {
+	return LexReporter{"", Position{}}
+}
+
 // display the current line and position we are processing
 func (reporter LexReporter) ReportLine() string {
 	// first display the line
