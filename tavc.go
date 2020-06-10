@@ -20,9 +20,10 @@ func main() {
 
 func build() {
 	compiler := &src.Compiler{}
-	tokens := src.Lex(compiler)
-	ast := src.Parse(tokens)
-	optimized := src.Optimize(ast)
-	src.Generate(optimized)
+	source := src.Preprocess(compiler, "hello world")
+	tokens := src.Lex(compiler, source)
+	ast := src.Parse(compiler, tokens)
+	optimized := src.Optimize(compiler, ast)
+	src.Generate(compiler, optimized)
 
 }
