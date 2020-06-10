@@ -19,7 +19,8 @@ func main() {
 }
 
 func build() {
-	tokens := src.Lex()
+	compiler := &src.Compiler{}
+	tokens := src.Lex(compiler)
 	ast := src.Parse(tokens)
 	optimized := src.Optimize(ast)
 	src.Generate(optimized)
