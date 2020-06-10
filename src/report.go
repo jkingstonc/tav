@@ -9,24 +9,18 @@ type Position struct {
 	Line   uint32
 }
 
-type Reporter interface {
-	ReportLine() string
-	GetIndent() uint32
-	GetLine() uint32
-}
-
 // reports messages to the current module
-type LexReporter struct {
+type Reporter struct {
 	CurrentLine string
 	Position    Position
 }
 
-func NewLexReporter() LexReporter {
-	return LexReporter{"", Position{}}
+func NewReporter() *Reporter {
+	return &Reporter{"", Position{}}
 }
 
 // display the current line and position we are processing
-func (reporter LexReporter) ReportLine() string {
+func (reporter *Reporter) ReportLine() string {
 	// first display the line
 	Log(reporter.CurrentLine)
 	// then display where we are in that line
@@ -42,9 +36,9 @@ func (reporter LexReporter) ReportLine() string {
 	return str.String()
 }
 
-func (reporter LexReporter) GetIndent() uint32 {
+func (reporter *Reporter) GetIndent() uint32 {
 	return reporter.Position.Indent
 }
-func (reporter LexReporter) GetLine() uint32 {
+func (reporter *Reporter) GetLine() uint32 {
 	return reporter.Position.Line
 }

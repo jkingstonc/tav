@@ -9,7 +9,6 @@ const (
 
 type Lexer struct {
 	Compiler *Compiler
-	Reporter LexReporter
 	Consumer LexConsumer
 }
 

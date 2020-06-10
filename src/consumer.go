@@ -1,14 +1,23 @@
 package src
 
-type LexConsumer struct {
-	Source   string
-	Reporter LexReporter
+type Consumer struct {
+	Reporter *Reporter
 }
 
-func NewLexConsumer(source string, reporter LexReporter) LexConsumer {
-	return LexConsumer{
-		Source:   source,
-		Reporter: reporter,
+type LexConsumer struct {
+	Consumer
+	Source string
+}
+
+func NewLexConsumer(source string, reporter *Reporter) *LexConsumer {
+
+	reporter.CurrentLine = source
+
+	return &LexConsumer{
+		Consumer: Consumer{
+			Reporter: reporter,
+		},
+		Source: source,
 	}
 }
 

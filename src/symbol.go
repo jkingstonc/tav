@@ -27,6 +27,13 @@ type SymTable struct {
 	Counter  uint32
 }
 
+func NewSymTable() *SymTable {
+	return &SymTable{
+		SymbolID: make(map[string]uint32),
+		Symbols:  make(map[uint32]Symbol),
+	}
+}
+
 func (symTable *SymTable) Add(identifier string, symType, attributes uint8) {
 	_, ok := symTable.SymbolID[identifier]
 	Log(ok, identifier)
