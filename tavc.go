@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"tav/src"
 )
@@ -19,10 +20,6 @@ func main() {
 }
 
 func build() {
-	compiler := &src.Compiler{}
-	source := src.Preprocess(compiler, "//this is a comment\nhello world")
-	tokens := src.Lex(compiler, source)
-	ast := src.Parse(compiler, tokens)
-	optimized := src.Optimize(compiler, ast)
-	src.Generate(compiler, optimized)
+	src.AheadCompile(":=")
+	fmt.Scanln()
 }

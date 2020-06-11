@@ -1,6 +1,9 @@
 package src
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 func LineInString(source string, line int) string {
 	lineCounter := 0
@@ -22,4 +25,8 @@ func LineInString(source string, line int) string {
 		}
 	}
 	return ""
+}
+
+func IsChar(r rune) bool {
+	return unicode.IsLetter(r)
 }

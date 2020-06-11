@@ -15,7 +15,6 @@ type LexConsumer struct {
 	Consumer
 	Source  string
 	Scanner *bufio.Scanner
-	Counter uint32
 }
 
 func NewLexConsumer(source string, reporter *Reporter) *LexConsumer {
@@ -31,8 +30,19 @@ func NewLexConsumer(source string, reporter *Reporter) *LexConsumer {
 	}
 }
 
+func (lexConsumer *LexConsumer) SkipWhitespace(r rune){
+	for r == rune(' '){
+		Log("skippp", rune(r))
+		r = lexConsumer.Advance()
+	}
+}
+
 func (lexConsumer *LexConsumer) Peek() rune {
 	return rune(lexConsumer.Source[lexConsumer.Counter])
+}
+
+func (lexConsumer *LexConsumer) Expect(r rune) bool {
+	return lexConsumer.Peek() == r
 }
 
 func (lexConsumer *LexConsumer) Consume(char rune) rune {
@@ -47,6 +57,13 @@ func (lexConsumer *LexConsumer) Advance() rune {
 	return rune(r)
 }
 
+func (lexConsumer *LexConsumer) AdvanceMul(ammount uint32) rune {
+	r := lexConsumer.Source[lexConsumer.Counter]
+	lexConsumer.Counter+=ammount
+	lexConsumer.Reporter.Position.Indent+=ammount
+	return rune(r)
+}
+
 func (lexConsumer *LexConsumer) End() bool {
-	return !(lexConsumer.Consumer.Counter < uint32(len(lexConsumer.Source)))
+	return !(lexConsumer.Counter < uint32(len(lexConsumer.Source)))
 }

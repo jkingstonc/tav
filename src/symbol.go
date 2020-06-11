@@ -22,11 +22,14 @@ type Symbol struct {
 
 // keep a record of symbol identifiers along with their type and attribute
 type SymTable struct {
+	// used so we can keep track of the scope of variables
+	Parent   *SymTable
 	Symbols  map[uint32]Symbol
 	SymbolID map[string]uint32
 	Counter  uint32
 }
 
+// create a new symbol table
 func NewSymTable() *SymTable {
 	return &SymTable{
 		SymbolID: make(map[string]uint32),
@@ -34,27 +37,32 @@ func NewSymTable() *SymTable {
 	}
 }
 
-func (symTable *SymTable) Add(identifier string, symType, attributes uint8) {
+// add a symbol to the table and retrieve the integer id
+func (symTable *SymTable) Add(identifier string, symType, attributes uint8) uint32{
 	_, ok := symTable.SymbolID[identifier]
 	Log(ok, identifier)
 	Assert(!ok, "symbol already exists in symbol table", identifier)
 	symTable.SymbolID[identifier] = symTable.Counter
 	symTable.Symbols[symTable.Counter] = Symbol{Type: symType, Attribuites: attributes}
 	symTable.Counter++
+	return symTable.Counter-1
 }
 
+// get the symbol id given an identifier string
 func (symTable *SymTable) GetID(identifier string) uint32 {
 	id, ok := symTable.SymbolID[identifier]
 	Assert(ok, "cannot retrieve symbol id, doesn't exist", identifier)
 	return id
 }
 
+// get the symbol value given an id
 func (symTable *SymTable) Get(id uint32) Symbol {
 	sym, ok := symTable.Symbols[id]
 	Assert(ok, "symbol couldn't be found in the symbol table", string(id))
 	return sym
 }
 
+// hash function to hash a string
 func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))

@@ -5,6 +5,6 @@ type Parser struct {
 	SymTable *SymTable
 }
 
-func Parse(compiler *Compiler, tokens []Token) *AST {
+func Parse(compiler *Compiler, tokens []*Token) *AST {
 	return nil
 }

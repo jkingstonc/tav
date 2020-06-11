@@ -22,14 +22,15 @@ func (compiler *Compiler) Report(severity uint8, reporter *Reporter, errCode uin
 
 // report a warning to the compiler. the compiler will continue and this will not effect the output
 func (compiler *Compiler) Warning(reporter *Reporter, errCode uint32, msg string) {
-	Log("WARNING", "line", reporter.GetLine(), "pos", reporter.GetIndent())
+	Log("WARNING", "line", reporter.GetLine()+1, "pos", reporter.GetIndent()+1)
 	Log(msg)
 	Log("\n")
 }
 
 // report a critical error to the compiler. the compiler will exit from this point as it cannot continue
 func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg string) {
-	Log("CRITICAL ERROR", "line", reporter.GetLine(), "pos", reporter.GetIndent())
+	Log("CRITICAL ERROR", reporter.GetLine()+1, ":", reporter.GetIndent()+1)
+	Log("...")
 	Log(reporter.ReportLine())
 	Log(msg)
 	Log("\n")

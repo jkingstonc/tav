@@ -25,11 +25,11 @@ func (reporter *Reporter) ReportLine() string {
 	Log(reporter.CurrentLine)
 	// then display where we are in that line
 	var str strings.Builder
-	for i := 0; i < int(reporter.Position.Indent)-1; i++ {
+	for i := 0; i < int(reporter.Position.Indent); i++ {
 		str.WriteString(" ")
 	}
 	str.WriteString("^\n")
-	for i := 0; i < int(reporter.Position.Indent)-2; i++ {
+	for i := 0; i < int(reporter.Position.Indent)-1; i++ {
 		str.WriteString("_")
 	}
 	str.WriteString("/")
