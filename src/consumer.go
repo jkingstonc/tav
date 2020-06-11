@@ -1,10 +1,5 @@
 package src
 
-import (
-	"bufio"
-	"strings"
-)
-
 type Consumer struct {
 	Reporter *Reporter
 	// used to indicate which char/token we are at
@@ -13,36 +8,48 @@ type Consumer struct {
 
 type LexConsumer struct {
 	Consumer
-	Source  string
-	Scanner *bufio.Scanner
+	Source  *string
 }
 
-func NewLexConsumer(source string, reporter *Reporter) *LexConsumer {
+type ParseConsumer struct {
+	Consumer
+	Tokens []*Token
+}
 
-	reporter.CurrentLine = source
-
+func NewLexConsumer(source *string, reporter *Reporter) *LexConsumer {
 	return &LexConsumer{
 		Consumer: Consumer{
 			Reporter: reporter,
 		},
-		Source:  source,
-		Scanner: bufio.NewScanner(strings.NewReader(source)),
+		Source: source,
 	}
 }
 
-func (lexConsumer *LexConsumer) SkipWhitespace(r rune){
-	for r == rune(' '){
+func NewParseConsumer(tokens []*Token, reporter *Reporter) *ParseConsumer {
+	return &ParseConsumer{
+		Consumer: Consumer{
+			Reporter: reporter,
+		},
+		Tokens: tokens,
+	}
+}
+
+func (lexConsumer *LexConsumer) SkipWhitespace(r rune) {
+	for r == rune(' ') {
 		Log("skippp", rune(r))
 		r = lexConsumer.Advance()
 	}
 }
 
 func (lexConsumer *LexConsumer) Peek() rune {
-	return rune(lexConsumer.Source[lexConsumer.Counter])
+	return rune((*lexConsumer.Source)[lexConsumer.Counter])
 }
 
 func (lexConsumer *LexConsumer) Expect(r rune) bool {
-	return lexConsumer.Peek() == r
+	if !lexConsumer.End() {
+		return lexConsumer.Peek() == r
+	}
+	return false
 }
 
 func (lexConsumer *LexConsumer) Consume(char rune) rune {
@@ -51,19 +58,52 @@ func (lexConsumer *LexConsumer) Consume(char rune) rune {
 }
 
 func (lexConsumer *LexConsumer) Advance() rune {
-	r := lexConsumer.Source[lexConsumer.Counter]
+	r := (*lexConsumer.Source)[lexConsumer.Counter]
 	lexConsumer.Counter++
 	lexConsumer.Reporter.Position.Indent++
 	return rune(r)
 }
 
 func (lexConsumer *LexConsumer) AdvanceMul(ammount uint32) rune {
-	r := lexConsumer.Source[lexConsumer.Counter]
-	lexConsumer.Counter+=ammount
-	lexConsumer.Reporter.Position.Indent+=ammount
+	r := (*lexConsumer.Source)[lexConsumer.Counter]
+	lexConsumer.Counter += ammount
+	lexConsumer.Reporter.Position.Indent += ammount
 	return rune(r)
 }
 
 func (lexConsumer *LexConsumer) End() bool {
-	return !(lexConsumer.Counter < uint32(len(lexConsumer.Source)))
+	return !(lexConsumer.Counter < uint32(len(*lexConsumer.Source)))
+}
+
+func (parseConsumer *ParseConsumer) Peek() *Token {
+	return parseConsumer.Tokens[parseConsumer.Counter]
+}
+
+func (parseConsumer *ParseConsumer) Expect(tokenType uint32) bool {
+	if !parseConsumer.End() {
+		return parseConsumer.Peek().Type == tokenType
+	}
+	return false
+}
+
+func (parseConsumer *ParseConsumer) Consume(tokenType uint32) *Token {
+	t := parseConsumer.Advance()
+	return t
+}
+
+func (parseConsumer *ParseConsumer) Advance() *Token {
+	t := parseConsumer.Tokens[parseConsumer.Counter]
+	parseConsumer.Counter++
+	parseConsumer.Reporter.Position.Indent++
+	return t
+}
+
+func (parseConsumer *ParseConsumer) AdvanceMul(ammount uint32) *Token {
+	t := parseConsumer.Tokens[parseConsumer.Counter]
+	parseConsumer.Counter += ammount
+	parseConsumer.Reporter.Position.Indent += ammount
+	return t
+}
+func (parseConsumer *ParseConsumer) End() bool {
+	return !(parseConsumer.Counter < uint32(len(parseConsumer.Tokens)))
 }

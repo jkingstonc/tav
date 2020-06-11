@@ -8,6 +8,7 @@ const (
 )
 
 type Compiler struct {
+	Source *string
 }
 
 // report an error, the compiler will decide what to do given the severity

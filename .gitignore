@@ -1,5 +1,6 @@
-examples/
+.idea/
 .vscode/
+examples/
 *.exe
 *.txt
 *.bat

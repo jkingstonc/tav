@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"tav/src"
 )
@@ -20,6 +19,6 @@ func main() {
 }
 
 func build() {
-	src.AheadCompile(":=")
-	fmt.Scanln()
+	program := "x:=;"
+	src.AheadCompile(&program)
 }

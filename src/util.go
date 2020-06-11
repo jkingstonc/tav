@@ -30,3 +30,7 @@ func LineInString(source string, line int) string {
 func IsChar(r rune) bool {
 	return unicode.IsLetter(r)
 }
+
+func IsNum(r rune) bool {
+	return unicode.IsDigit(r)
+}
