@@ -37,13 +37,12 @@ func Lex(compiler *Compiler) []*Token {
 func (lexer *Lexer) Run() []*Token {
 	for !lexer.Consumer.End() {
 		lexer.Consumer.SkipWhitespace()
-		r := lexer.Consumer.Peek()
+		r := lexer.Consumer.Advance()
 		switch r {
 		case '\n':
 			fallthrough
 		case '\r':
 			lexer.Newline()
-			lexer.Consumer.Advance()
 			// issue here is that the lexer then doesn't know there is a line here
 			break
 		case '/':
@@ -58,27 +57,19 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case '{':
 			lexer.Tok(LEFT_CURLY, nil)
-			lexer.Consumer.Advance()
 		case '}':
 			lexer.Tok(RIGHT_CURLY, nil)
-			lexer.Consumer.Advance()
 		case '[':
 			lexer.Tok(LEFT_BRACKET, nil)
-			lexer.Consumer.Advance()
 		case ']':
 			lexer.Tok(RIGHT_BRACKET, nil)
-			lexer.Consumer.Advance()
 		case '(':
 			lexer.Tok(LEFT_PAREN, nil)
-			lexer.Consumer.Advance()
 		case ')':
 			lexer.Tok(RIGHT_PAREN, nil)
-			lexer.Consumer.Advance()
 		case ',':
 			lexer.Tok(COMMA, nil)
-			lexer.Consumer.Advance()
 		case '.':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('.') {
 				if lexer.Consumer.Consume('.') {
 					lexer.Tok(VARIADIC, nil)
@@ -90,9 +81,7 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case ';':
 			lexer.Tok(SEMICOLON, nil)
-			lexer.Consumer.Advance()
 		case ':':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(QUICK_ASSIGN, nil)
 			} else {
@@ -100,26 +89,21 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case '?':
 			lexer.Tok(QUESTION, nil)
-			lexer.Consumer.Advance()
 		case '*':
 			lexer.Tok(STAR, nil)
-			lexer.Consumer.Advance()
 		case '!':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(NOT_EQUALS, nil)
 			} else {
 				lexer.Tok(BANG, nil)
 			}
 		case '<':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(LESS_EQUAL, nil)
 			} else {
 				lexer.Tok(LESS_THAN, nil)
 			}
 		case '>':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(GREAT_EQUAL, nil)
 			} else {
@@ -127,34 +111,26 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case '%':
 			lexer.Tok(PERCENT, nil)
-			lexer.Consumer.Advance()
 		case '&':
 			lexer.Tok(BIN_AND, nil)
-			lexer.Consumer.Advance()
 		case '|':
 			lexer.Tok(BIN_OR, nil)
-			lexer.Consumer.Advance()
 		case '~':
 			lexer.Tok(WIGGLE, nil)
-			lexer.Consumer.Advance()
 		case '+':
 			lexer.Tok(PLUS, nil)
-			lexer.Consumer.Advance()
 		case '-':
 			lexer.Tok(MINUS, nil)
-			lexer.Consumer.Advance()
 		case '=':
-			lexer.Consumer.Advance()
-			if lexer.Consumer.Expect('=') {
+			if lexer.Consumer.Consume('=') {
 				lexer.Tok(EQUALS, nil)
-				lexer.Consumer.Advance()
 			} else {
 				lexer.Tok(ASSIGN, nil)
 			}
+		case '@':
+			lexer.Tok(ADDR, nil)
 		default:
-			if IsChar(r) {
-				lexer.Tok(IDENTIFIER, lexer.Identifier())
-			} else {
+			if !(IsChar(r) && lexer.Identifier(r)) {
 				lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
 			}
 		}
@@ -182,11 +158,139 @@ func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 
-func (lexer *Lexer) Identifier() string {
+func (lexer *Lexer) Identifier(r rune) bool {
+	switch r {
+	case 'u':
+		if !lexer.CheckKeyword("8", U8) {
+			if !lexer.CheckKeyword("16", U16) {
+				if !lexer.CheckKeyword("32", U32) {
+					if !lexer.CheckKeyword("64", U64) {
+						return false
+					}
+				}
+			}
+		}
+		return true
+	case 'i':
+		if !lexer.CheckKeyword("8", I8) {
+			if !lexer.CheckKeyword("16", I16) {
+				if !lexer.CheckKeyword("32", I32) {
+					if !lexer.CheckKeyword("64", I64) {
+						if !lexer.CheckKeyword("f", IF) {
+							if !lexer.CheckKeyword("fdef", IFDEF) {
+								return false
+							}
+						}
+					}
+				}
+			}
+		}
+		return true
+	case 'f':
+		if !lexer.CheckKeyword("32", F32) {
+			if !lexer.CheckKeyword("64", f64) {
+				if !lexer.CheckKeyword("un", FUN) {
+					if !lexer.CheckKeyword("or", FOR) {
+						return false
+					}
+				}
+			}
+		}
+		return true
+	case 'b':
+		if !lexer.CheckKeyword("ool", BOOL) {
+			if !lexer.CheckKeyword("reak", BREAK) {
+				return false
+			}
+		}
+		return true
+	case 's':
+		if !lexer.CheckKeyword("tring", STRING) {
+			if !lexer.CheckKeyword("truct", STRUCT) {
+				if !lexer.CheckKeyword("witch", SWITCH) {
+					return false
+				}
+			}
+		}
+		return true
+	case 'a':
+		if !lexer.CheckKeyword("ny", ANY) {
+			if !lexer.CheckKeyword("nd", AND) {
+				return false
+			}
+		}
+		return true
+	case 'n':
+		if !lexer.CheckKeyword("ull", NULL) {
+			return false
+		}
+		return true
+	case 'd':
+		if !lexer.CheckKeyword("ef", DEF) {
+			return false
+		}
+	case 'r':
+		if !lexer.CheckKeyword("un", RUN) {
+			if !lexer.CheckKeyword("eturn", RETURN) {
+				return false
+			}
+		}
+		return true
+	case 'e':
+		if !lexer.CheckKeyword("lif", ELIF) {
+			if !lexer.CheckKeyword("lse", ELSE) {
+				if !lexer.CheckKeyword("xpose", EXPOSE) {
+					return false
+				}
+			}
+		}
+		return true
+	case 'c':
+		if !lexer.CheckKeyword("ase", CASE) {
+			if !lexer.CheckKeyword("ontinue", CONTINUE) {
+				return false
+			}
+		}
+		return true
+	case 'h':
+		if !lexer.CheckKeyword("ide", HIDE) {
+			return false
+		}
+		return true
+	case 'o':
+		if !lexer.CheckKeyword("r", OR) {
+			return false
+		}
+		return true
+	}
+
 	var identifier strings.Builder
+	identifier.WriteRune(r)
 	for !lexer.Consumer.End() && (IsChar(lexer.Consumer.Peek()) || IsNum(lexer.Consumer.Peek())) {
 		identifier.WriteRune(lexer.Consumer.Peek())
 		lexer.Consumer.Advance()
 	}
-	return identifier.String()
+	lexer.Tok(IDENTIFIER, identifier.String())
+	return true
+}
+
+func (lexer *Lexer) CheckKeyword(keyword string, tok uint32) bool {
+	l := len(keyword)
+	// check if the length is greater than the source string
+	if int(lexer.Consumer.Counter)+l > len(*lexer.Consumer.Source) {
+		return false
+	}
+	valid := true
+	// compare to see if the runes match in the rest of the string
+	for i := 0; i < l; i++ {
+		if keyword[i] != (*lexer.Consumer.Source)[int(lexer.Consumer.Counter)+i] {
+			valid = false
+		}
+	}
+	// if they match then advance and return true
+	if valid {
+		lexer.Consumer.AdvanceMul(uint32(l))
+		lexer.Tok(tok, nil)
+	}
+	return valid
 }

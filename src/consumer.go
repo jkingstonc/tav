@@ -1,6 +1,7 @@
 package src
 
 type Consumer struct {
+	Compiler *Compiler
 	Reporter *Reporter
 	// used to indicate which char/token we are at
 	Counter uint32
@@ -25,9 +26,10 @@ func NewLexConsumer(source *string, reporter *Reporter) *LexConsumer {
 	}
 }
 
-func NewParseConsumer(tokens []*Token, reporter *Reporter) *ParseConsumer {
+func NewParseConsumer(tokens []*Token, reporter *Reporter, compiler *Compiler) *ParseConsumer {
 	return &ParseConsumer{
 		Consumer: Consumer{
+			Compiler: compiler,
 			Reporter: reporter,
 		},
 		Tokens: tokens,
@@ -91,6 +93,15 @@ func (parseConsumer *ParseConsumer) Expect(tokenType uint32) bool {
 func (parseConsumer *ParseConsumer) Consume(tokenType uint32) *Token {
 	t := parseConsumer.Advance()
 	return t
+}
+
+func (parseConsumer *ParseConsumer) ConsumeErr(tokenType uint32, errCode uint32, errMsg string) *Token {
+	t := parseConsumer.Peek()
+	if t.Type == tokenType{
+		return parseConsumer.Advance()
+	}
+	parseConsumer.Compiler.Critical(parseConsumer.Reporter, errCode, errMsg)
+	return nil
 }
 
 func (parseConsumer *ParseConsumer) Advance() *Token {

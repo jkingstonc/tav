@@ -14,7 +14,7 @@ func main() {
 	src.Log("tav v_a_0_1")
 	args := os.Args[1:]
 
-	program := "hello world x:=!=;"
+	program := "X : struct{\n};"
 
 	if args[0] == "build" {
 		src.AheadCompile(&program)

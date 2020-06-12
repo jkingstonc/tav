@@ -34,46 +34,52 @@ const (
 
 	// variables
 	IDENTIFIER = 0x1F
-	PTR		   = 0x20
+	ADDR	   = 0x20   // &
 	U8		   = 0x21
 	I8		   = 0x22
 	U16		   = 0x23
 	I16		   = 0x24
 	U32		   = 0x25
 	I32		   = 0x26
-	U64		   = 0x27
-	I64		   = 0x28
-	f64		   = 0x29
-	BOOL	   = 0x2A
-	STRING	   = 0x2B
-	STRUCT     = 0xAC
-	FUN        = 0xAD
-	ANY        = 0xAE
-	SLITERAL   = 0xAF
-	NLITERAL   = 0xB0
-	NULL       = 0xB1
+	F32		   = 0x27
+	U64		   = 0x28
+	I64		   = 0x29
+	f64		   = 0x2A
+	BOOL	   = 0x2B
+	STRING	   = 0x2C
+	STRUCT     = 0x2D
+	FUN        = 0x2E
+	ANY        = 0x2F
+	SLITERAL   = 0x30
+	NLITERAL   = 0x31
+	NULL       = 0x32
 
 	// directives
-	DEF 	   = 0xB2
-	RUN        = 0xB3
-	IFDEF      = 0xB4
-	HIDE       = 0xB5
-	EXPOSE     = 0xB6
+	DEF 	   = 0x33
+	RUN        = 0x34
+	IFDEF      = 0x35
+	HIDE       = 0x36
+	EXPOSE     = 0x37
 
-	IF		   = 0xB7
-	ELIF	   = 0xB8
-	ELSE	   = 0xB9
-	DO	       = 0xBA
-	FOR	       = 0xBB
-	SWITCH	   = 0xBC
-	BREAK	   = 0xBD
-	CONTINUE   = 0xBE
-	RETURN	   = 0xBF
+	IF		   = 0x38
+	ELIF	   = 0x39
+	ELSE	   = 0x3A
+	FOR	       = 0x3C
+	SWITCH	   = 0x3D
+	CASE       = 0x3E
+	BREAK	   = 0x3F
+	CONTINUE   = 0x40
+	RETURN	   = 0x41
+	AND		   = 0x42
+	OR		   = 0x43
 )
 
 var (
 	TokStrings = [...]string{"","{","}","[","]","(",")",",",".",";",":","?","*","!","?",
-		"&","|","~","+","-","/","=",":=","==","!=","<",">","<=",">=","..","...","identifier","define"}
+		"&","|","~","+","-","/","=",":=","==","!=","<",">","<=",">=","..","...","identifier","&",
+		"u8","i8","u16","i16","u32","i32","f32","u64","i64","f64","bool","string","struct","fun",
+	"any","sliteral","nliteral","null","def","run","ifdef","endif","hide","expose","if","elif","else",
+	"for","switch","case","break","continue","return"}
 )
 
 type Token struct {

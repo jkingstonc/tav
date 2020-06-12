@@ -9,7 +9,7 @@ type Directives struct {
 
 func ProcessDirectives(compiler *Compiler, tokens []*Token) []*Token {
 	reporter := NewReporter(compiler.Source)
-	consumer := NewParseConsumer(tokens, reporter)
+	consumer := NewParseConsumer(tokens, reporter, compiler)
 
 	directives := Directives{
 		Compiler: compiler,
@@ -33,5 +33,5 @@ func (directives *Directives) Run() []*Token {
 		}
 	}
 
-	return directives.NewTokens
+	return directives.Consumer.Tokens
 }

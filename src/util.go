@@ -28,7 +28,7 @@ func LineInString(source string, line int) string {
 }
 
 func IsChar(r rune) bool {
-	return unicode.IsLetter(r)
+	return r != ' ' && unicode.IsLetter(r)
 }
 
 func IsNum(r rune) bool {
