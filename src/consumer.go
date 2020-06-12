@@ -91,8 +91,10 @@ func (parseConsumer *ParseConsumer) Expect(tokenType uint32) bool {
 }
 
 func (parseConsumer *ParseConsumer) Consume(tokenType uint32) *Token {
-	t := parseConsumer.Advance()
-	return t
+	if parseConsumer.Expect(tokenType) {
+		return parseConsumer.Advance()
+	}
+	return nil
 }
 
 func (parseConsumer *ParseConsumer) ConsumeErr(tokenType uint32, errCode uint32, errMsg string) *Token {

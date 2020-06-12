@@ -154,7 +154,6 @@ func (lexer *Lexer) BlockComment() {
 
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	t := &Token{tok, val}
-	t.Debug()
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 
