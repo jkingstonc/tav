@@ -34,10 +34,9 @@ func NewParseConsumer(tokens []*Token, reporter *Reporter) *ParseConsumer {
 	}
 }
 
-func (lexConsumer *LexConsumer) SkipWhitespace(r rune) {
-	for r == rune(' ') {
-		Log("skippp", rune(r))
-		r = lexConsumer.Advance()
+func (lexConsumer *LexConsumer) SkipWhitespace() {
+	for lexConsumer.Expect(' ') {
+		lexConsumer.Advance()
 	}
 }
 
@@ -52,9 +51,12 @@ func (lexConsumer *LexConsumer) Expect(r rune) bool {
 	return false
 }
 
-func (lexConsumer *LexConsumer) Consume(char rune) rune {
-	r := lexConsumer.Advance()
-	return r
+func (lexConsumer *LexConsumer) Consume(char rune) bool {
+	if lexConsumer.Expect(char){
+		lexConsumer.Advance()
+		return true
+	}
+	return false
 }
 
 func (lexConsumer *LexConsumer) Advance() rune {
@@ -106,4 +108,7 @@ func (parseConsumer *ParseConsumer) AdvanceMul(ammount uint32) *Token {
 }
 func (parseConsumer *ParseConsumer) End() bool {
 	return !(parseConsumer.Counter < uint32(len(parseConsumer.Tokens)))
+}
+func (parseConsumer *ParseConsumer) Remove() {
+	parseConsumer.Tokens = append(parseConsumer.Tokens[:parseConsumer.Counter], parseConsumer.Tokens[parseConsumer.Counter+1:]...)
 }

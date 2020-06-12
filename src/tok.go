@@ -32,12 +32,48 @@ const (
 	RANGE = 0x1D        // ..
 	VARIADIC = 0x1E		// ...
 
-
+	// variables
 	IDENTIFIER = 0x1F
+	PTR		   = 0x20
+	U8		   = 0x21
+	I8		   = 0x22
+	U16		   = 0x23
+	I16		   = 0x24
+	U32		   = 0x25
+	I32		   = 0x26
+	U64		   = 0x27
+	I64		   = 0x28
+	f64		   = 0x29
+	BOOL	   = 0x2A
+	STRING	   = 0x2B
+	STRUCT     = 0xAC
+	FUN        = 0xAD
+	ANY        = 0xAE
+	SLITERAL   = 0xAF
+	NLITERAL   = 0xB0
+	NULL       = 0xB1
+
+	// directives
+	DEF 	   = 0xB2
+	RUN        = 0xB3
+	IFDEF      = 0xB4
+	HIDE       = 0xB5
+	EXPOSE     = 0xB6
+
+	IF		   = 0xB7
+	ELIF	   = 0xB8
+	ELSE	   = 0xB9
+	DO	       = 0xBA
+	FOR	       = 0xBB
+	SWITCH	   = 0xBC
+	BREAK	   = 0xBD
+	CONTINUE   = 0xBE
+	RETURN	   = 0xBF
 )
 
 var (
-	TokStrings = [...]string{"","{","}","[","]","(",")",",",".",";",":","?","*","!","?","&","|","~","+","-","/","=",":=","==","!=","<",">","<=",">=","..","...","identifier"}
+	TokStrings = [...]string{"","{","}","[","]","(",")",",",".",";",":","?","*","!","?",
+		"&","|","~","+","-","/","=",":=","==","!=","<",">","<=",">=","..","...","identifier","define"}
 )
 
 type Token struct {

@@ -24,10 +24,12 @@ func ProcessDirectives(compiler *Compiler, tokens []*Token) []*Token {
 
 func (directives *Directives) Run() []*Token {
 	for !directives.Consumer.End() {
-		t := directives.Consumer.Peek()
+		t := directives.Consumer.Peek().Type
 		switch t {
 		default:
-			directives.Compiler.Critical(directives.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "token wasn't expected")
+			directives.Consumer.Advance()
+			break
+			//directives.Compiler.Critical(directives.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "token wasn't expected")
 		}
 	}
 

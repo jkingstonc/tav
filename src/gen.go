@@ -8,6 +8,6 @@ func Generate(compiler *Compiler, ast *AST) uint8 {
 	LLVMCompile(compiler, ast)
 
 	end := time.Since(start)
-	Log("back end took ", end.Seconds(), "ms")
+	Log("back end took ", end.Seconds(), "seconds")
 	return SUCCESS_COMP
 }

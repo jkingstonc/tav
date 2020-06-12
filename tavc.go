@@ -13,12 +13,12 @@ const (
 func main() {
 	src.Log("tav v_a_0_1")
 	args := os.Args[1:]
-	if args[0] == "build" {
-		build()
-	}
-}
 
-func build() {
-	program := "x:=;"
-	src.AheadCompile(&program)
+	program := "hello world x:=!=;"
+
+	if args[0] == "build" {
+		src.AheadCompile(&program)
+	} else if args[0] == "run" {
+		src.JITCompile(&program)
+	}
 }

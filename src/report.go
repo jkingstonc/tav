@@ -30,18 +30,18 @@ func NewReporter(source *string) *Reporter {
 func (reporter *Reporter) ReportLine() string {
 	// get a scanner to find the line that the error is at
 	scanner := bufio.NewScanner(strings.NewReader(*reporter.Source))
-	for i := 0; i<int(reporter.Position.Line+1); i++ {
+	for i := 0; i < int(reporter.Position.Line+1); i++ {
 		scanner.Scan()
 	}
 	// first display the line
 	Log(scanner.Text())
 	// then display where we are in that line
 	var str strings.Builder
-	for i := 0; i < int(reporter.Position.Indent); i++ {
+	for i := 0; i < int(reporter.Position.Indent)-1; i++ {
 		str.WriteString(" ")
 	}
 	str.WriteString("^\n")
-	for i := 0; i < int(reporter.Position.Indent)-1; i++ {
+	for i := 0; i < int(reporter.Position.Indent)-2; i++ {
 		str.WriteString("_")
 	}
 	str.WriteString("/")

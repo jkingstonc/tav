@@ -30,14 +30,14 @@ func Lex(compiler *Compiler) []*Token {
 
 	result := lexer.Run()
 	end := time.Since(start)
-	Log("front end took ", end.Seconds(), "ms")
+	Log("front end took ", end.Seconds(), "seconds")
 	return result
 }
 
 func (lexer *Lexer) Run() []*Token {
 	for !lexer.Consumer.End() {
+		lexer.Consumer.SkipWhitespace()
 		r := lexer.Consumer.Peek()
-		lexer.Consumer.SkipWhitespace(r)
 		switch r {
 		case '\n':
 			fallthrough
@@ -47,14 +47,15 @@ func (lexer *Lexer) Run() []*Token {
 			// issue here is that the lexer then doesn't know there is a line here
 			break
 		case '/':
-			if lexer.Consumer.Expect('/') {
-				lexer.LineComment()
-			} else if lexer.Consumer.Expect('*') {
-				lexer.BlockComment()
-			}
-			lexer.Tok(BANG, nil)
 			lexer.Consumer.Advance()
-			break
+			if lexer.Consumer.Consume('/') {
+				lexer.LineComment()
+			} else if lexer.Consumer.Consume('*') {
+				lexer.BlockComment()
+			} else {
+				lexer.Tok(DIV, nil)
+				lexer.Consumer.Advance()
+			}
 		case '{':
 			lexer.Tok(LEFT_CURLY, nil)
 			lexer.Consumer.Advance()
@@ -78,10 +79,8 @@ func (lexer *Lexer) Run() []*Token {
 			lexer.Consumer.Advance()
 		case '.':
 			lexer.Consumer.Advance()
-			if lexer.Consumer.Expect('.') {
-				lexer.Consumer.Advance()
-				if lexer.Consumer.Expect('.') {
-					lexer.Consumer.Advance()
+			if lexer.Consumer.Consume('.') {
+				if lexer.Consumer.Consume('.') {
 					lexer.Tok(VARIADIC, nil)
 				} else {
 					lexer.Tok(RANGE, nil)
@@ -94,8 +93,7 @@ func (lexer *Lexer) Run() []*Token {
 			lexer.Consumer.Advance()
 		case ':':
 			lexer.Consumer.Advance()
-			if lexer.Consumer.Expect('=') {
-				lexer.Consumer.Advance()
+			if lexer.Consumer.Consume('=') {
 				lexer.Tok(QUICK_ASSIGN, nil)
 			} else {
 				lexer.Tok(COLON, nil)
@@ -107,8 +105,26 @@ func (lexer *Lexer) Run() []*Token {
 			lexer.Tok(STAR, nil)
 			lexer.Consumer.Advance()
 		case '!':
-			lexer.Tok(BANG, nil)
 			lexer.Consumer.Advance()
+			if lexer.Consumer.Consume('=') {
+				lexer.Tok(NOT_EQUALS, nil)
+			} else {
+				lexer.Tok(BANG, nil)
+			}
+		case '<':
+			lexer.Consumer.Advance()
+			if lexer.Consumer.Consume('=') {
+				lexer.Tok(LESS_EQUAL, nil)
+			} else {
+				lexer.Tok(LESS_THAN, nil)
+			}
+		case '>':
+			lexer.Consumer.Advance()
+			if lexer.Consumer.Consume('=') {
+				lexer.Tok(GREAT_EQUAL, nil)
+			} else {
+				lexer.Tok(GREAT_THAN, nil)
+			}
 		case '%':
 			lexer.Tok(PERCENT, nil)
 			lexer.Consumer.Advance()
@@ -137,13 +153,12 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		default:
 			if IsChar(r) {
-				lexer.Tok(IDENTIFIER, lexer.Identifier(r))
+				lexer.Tok(IDENTIFIER, lexer.Identifier())
 			} else {
 				lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
 			}
 		}
 	}
-
 	return lexer.Tokens
 }
 
@@ -153,11 +168,9 @@ func (lexer *Lexer) Newline() {
 }
 
 func (lexer *Lexer) LineComment() {
-	lexer.Consumer.Advance()
 	for !lexer.Consumer.End() && !lexer.Consumer.Expect('\n') && !lexer.Consumer.Expect('\r') {
 		lexer.Consumer.Advance()
 	}
-	lexer.Newline()
 }
 
 func (lexer *Lexer) BlockComment() {
@@ -169,15 +182,11 @@ func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 
-func (lexer *Lexer) Identifier(r rune) string {
+func (lexer *Lexer) Identifier() string {
 	var identifier strings.Builder
-	lexer.Consumer.Advance()
-	identifier.WriteRune(r)
-	r = lexer.Consumer.Peek()
-	for IsChar(r) || IsNum(r) {
-		identifier.WriteRune(r)
+	for !lexer.Consumer.End() && (IsChar(lexer.Consumer.Peek()) || IsNum(lexer.Consumer.Peek())) {
+		identifier.WriteRune(lexer.Consumer.Peek())
 		lexer.Consumer.Advance()
-		r = lexer.Consumer.Peek()
 	}
 	return identifier.String()
 }
