@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 	"tav/src"
 )
@@ -14,13 +15,16 @@ func main() {
 	src.Log("tav v_a_0_1")
 	args := os.Args[1:]
 
-	program := "Main : fn(){\n}"
 
-	if args[0] == "build" {
-		src.AheadCompile(&program)
-	} else if args[0] == "run" {
-		src.JITCompile(&program)
+	bytes, err := ioutil.ReadFile("F:\\OneDrive\\Programming\\GO\\src\\tav\\test.tv");
+	if err == nil{
+		program := string(bytes)
+		if args[0] == "build" {
+			src.AheadCompile(&program)
+		} else if args[0] == "run" {
+			src.JITCompile(&program)
+		}
+	}else{
+		src.Log("couldn't open test.tv")
 	}
-
-
 }

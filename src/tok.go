@@ -34,7 +34,8 @@ const (
 
 	// variables
 	IDENTIFIER = 0x1F
-	ADDR       = 0x20 // &
+	ADDR       = 0x20 // @
+	TYPE       = 0x21
 	U8         = 0x21
 	I8         = 0x22
 	U16        = 0x23
@@ -44,15 +45,16 @@ const (
 	F32        = 0x27
 	U64        = 0x28
 	I64        = 0x29
-	f64        = 0x2A
+	F64        = 0x2A
 	BOOL       = 0x2B
 	STRING     = 0x2C
 	STRUCT     = 0x2D
 	FN         = 0x2E
 	ANY        = 0x2F
-	SLITERAL   = 0x30
-	NLITERAL   = 0x31
-	NULL       = 0x32
+	NULL       = 0x30
+
+	SLITERAL   = 0x31
+	NLITERAL   = 0x32
 
 	// directives
 	DEF    = 0x33
@@ -79,7 +81,7 @@ const (
 
 var (
 	TokStrings = [...]string{"", "{", "}", "[", "]", "(", ")", ",", ".", ";", ":", "?", "*", "!", "?",
-		"&", "|", "~", "+", "-", "/", "=", ":=", "==", "!=", "<", ">", "<=", ">=", "..", "...", "identifier", "&",
+		"&", "|", "~", "+", "-", "/", "=", ":=", "==", "!=", "<", ">", "<=", ">=", "..", "...", "identifier", "@", "type",
 		"u8", "i8", "u16", "i16", "u32", "i32", "f32", "u64", "i64", "f64", "bool", "string", "struct", "fn",
 		"any", "sliteral", "nliteral", "null", "def", "run", "ifdef", "endif", "hide", "expose", "pack", "import", "if", "elif", "else",
 		"for", "switch", "case", "break", "continue", "return"}

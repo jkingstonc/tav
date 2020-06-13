@@ -47,15 +47,29 @@ func (parser *Parser) Run() AST {
 }
 
 func (parser *Parser) Identifier(identifier *Token) AST {
-	parser.Consumer.ConsumeErr(COLON, ERR_UNEXPECTED_TOKEN, "expected ':'")
 
-	switch parser.Consumer.Advance().Type {
-	case STRUCT:
-		return parser.Struct(identifier)
-	case FN:
-		return parser.Fun(identifier)
-	default:
-		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "expected token after identifier")
+
+
+	// check if we are doing a type assignment
+	if parser.Consumer.Consume(COLON) != nil{
+		Log("cock and ball torture")
+		// check if we are declaring the type
+		if t := parser.Consumer.Consume(TYPE); t != nil{
+			Log("cock and ball torture")
+			switch t.Value {
+			case STRUCT:
+				return parser.Struct(identifier)
+			case FN:
+				return parser.Fun(identifier)
+			default:
+				parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "expected token after ':'")
+			}
+		}else{
+			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "expected type after ':'")
+		}
+	}else{
+		// we are doing an immediate assignment
+		parser.Consumer.ConsumeErr(QUICK_ASSIGN, ERR_UNEXPECTED_TOKEN, "expected := after type decleration")
 	}
 	return nil
 }
@@ -69,8 +83,10 @@ func (parser *Parser) Struct(identifier *Token) AST {
 
 func (parser *Parser) Fun(identifier *Token) AST {
 	f := &FunAST{Identifier: identifier}
-	// function with no arguments
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
+
+		// process the arguments
+
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected ')'")
 	}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{'")

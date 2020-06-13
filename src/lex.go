@@ -130,14 +130,14 @@ func (lexer *Lexer) Run() []*Token {
 		case '@':
 			lexer.Tok(ADDR, nil)
 		case '#':
-			if !lexer.CheckKeyword("def", DEF) {
-				if !lexer.CheckKeyword("run", RUN) {
-					if !lexer.CheckKeyword("ifdef", IFDEF) {
-						if !lexer.CheckKeyword("endif", ENDIF) {
-							if !lexer.CheckKeyword("hide", HIDE) {
-								if !lexer.CheckKeyword("pack", PACK) {
-									if !lexer.CheckKeyword("expose", EXPOSE) {
-										if !lexer.CheckKeyword("import", IMPORT) {
+			if !lexer.CheckKeyword("def", DEF, nil) {
+				if !lexer.CheckKeyword("run", RUN, nil) {
+					if !lexer.CheckKeyword("ifdef", IFDEF, nil) {
+						if !lexer.CheckKeyword("endif", ENDIF, nil) {
+							if !lexer.CheckKeyword("hide", HIDE, nil) {
+								if !lexer.CheckKeyword("pack", PACK, nil) {
+									if !lexer.CheckKeyword("expose", EXPOSE, nil) {
+										if !lexer.CheckKeyword("import", IMPORT, nil) {
 											lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
 										}
 									}
@@ -172,16 +172,17 @@ func (lexer *Lexer) BlockComment() {
 
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	t := &Token{tok, val}
+	t.Debug()
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 
 func (lexer *Lexer) Identifier(r rune) bool {
 	switch r {
 	case 'u':
-		if !lexer.CheckKeyword("8", U8) {
-			if !lexer.CheckKeyword("16", U16) {
-				if !lexer.CheckKeyword("32", U32) {
-					if !lexer.CheckKeyword("64", U64) {
+		if !lexer.CheckKeyword("8", TYPE, U8) {
+			if !lexer.CheckKeyword("16", TYPE, U16) {
+				if !lexer.CheckKeyword("32", TYPE, U32) {
+					if !lexer.CheckKeyword("64", TYPE, U64) {
 						return false
 					}
 				}
@@ -189,11 +190,11 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'i':
-		if !lexer.CheckKeyword("8", I8) {
-			if !lexer.CheckKeyword("16", I16) {
-				if !lexer.CheckKeyword("32", I32) {
-					if !lexer.CheckKeyword("64", I64) {
-						if !lexer.CheckKeyword("f", IF) {
+		if !lexer.CheckKeyword("8", TYPE, I8) {
+			if !lexer.CheckKeyword("16", TYPE, I16) {
+				if !lexer.CheckKeyword("32", TYPE, I32) {
+					if !lexer.CheckKeyword("64", TYPE, I64) {
+						if !lexer.CheckKeyword("f", IF, nil) {
 							return false
 						}
 					}
@@ -202,10 +203,10 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'f':
-		if !lexer.CheckKeyword("32", F32) {
-			if !lexer.CheckKeyword("64", f64) {
-				if !lexer.CheckKeyword("n", FN) {
-					if !lexer.CheckKeyword("or", FOR) {
+		if !lexer.CheckKeyword("32", TYPE, F32) {
+			if !lexer.CheckKeyword("64", TYPE, F64) {
+				if !lexer.CheckKeyword("n", TYPE, FN) {
+					if !lexer.CheckKeyword("or", FOR, nil) {
 						return false
 					}
 				}
@@ -213,59 +214,59 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'b':
-		if !lexer.CheckKeyword("ool", BOOL) {
-			if !lexer.CheckKeyword("reak", BREAK) {
+		if !lexer.CheckKeyword("ool", TYPE, BOOL) {
+			if !lexer.CheckKeyword("reak", BREAK, nil) {
 				return false
 			}
 		}
 		return true
 	case 's':
-		if !lexer.CheckKeyword("tring", STRING) {
-			if !lexer.CheckKeyword("truct", STRUCT) {
-				if !lexer.CheckKeyword("witch", SWITCH) {
+		if !lexer.CheckKeyword("tring", TYPE, STRING) {
+			if !lexer.CheckKeyword("truct", TYPE, STRUCT) {
+				if !lexer.CheckKeyword("witch", SWITCH, nil) {
 					return false
 				}
 			}
 		}
 		return true
 	case 'a':
-		if !lexer.CheckKeyword("ny", ANY) {
-			if !lexer.CheckKeyword("nd", AND) {
+		if !lexer.CheckKeyword("ny", TYPE, ANY) {
+			if !lexer.CheckKeyword("nd", AND, nil) {
 				return false
 			}
 		}
 		return true
 	case 'n':
-		if !lexer.CheckKeyword("ull", NULL) {
+		if !lexer.CheckKeyword("ull", NULL, nil) {
 			return false
 		}
 		return true
 	case 'r':
-		if !lexer.CheckKeyword("eturn", RETURN) {
+		if !lexer.CheckKeyword("eturn", RETURN, nil) {
 			return false
 		}
 		return true
 	case 'e':
-		if !lexer.CheckKeyword("lif", ELIF) {
-			if !lexer.CheckKeyword("lse", ELSE) {
+		if !lexer.CheckKeyword("lif", ELIF, nil) {
+			if !lexer.CheckKeyword("lse", ELSE, nil) {
 				return false
 			}
 		}
 		return true
 	case 'c':
-		if !lexer.CheckKeyword("ase", CASE) {
-			if !lexer.CheckKeyword("ontinue", CONTINUE) {
+		if !lexer.CheckKeyword("ase", CASE, nil) {
+			if !lexer.CheckKeyword("ontinue", CONTINUE, nil) {
 				return false
 			}
 		}
 		return true
 	case 'o':
-		if !lexer.CheckKeyword("r", OR) {
+		if !lexer.CheckKeyword("r", OR, nil) {
 			return false
 		}
 		return true
 	case 'p':
-		if !lexer.CheckKeyword("ack", PACK) {
+		if !lexer.CheckKeyword("ack", PACK, nil) {
 			return false
 		}
 		return true
@@ -281,7 +282,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 	return true
 }
 
-func (lexer *Lexer) CheckKeyword(keyword string, tok uint32) bool {
+func (lexer *Lexer) CheckKeyword(keyword string, tok uint32, value interface{}) bool {
 	l := len(keyword)
 	// check if the length is greater than the source string
 	if int(lexer.Consumer.Counter)+l > len(*lexer.Consumer.Source) {
@@ -297,7 +298,7 @@ func (lexer *Lexer) CheckKeyword(keyword string, tok uint32) bool {
 	// if they match then advance and return true
 	if valid {
 		lexer.Consumer.AdvanceMul(uint32(l))
-		lexer.Tok(tok, nil)
+		lexer.Tok(tok, value)
 	}
 	return valid
 }
