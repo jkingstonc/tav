@@ -2,7 +2,12 @@ package src
 
 import "time"
 
-func Generate(compiler *Compiler, ast *AST) uint8 {
+// implements visitor
+type Generator struct {
+	Root   AST
+}
+
+func Generate(compiler *Compiler, ast AST) uint8 {
 	start := time.Now()
 
 	LLVMCompile(compiler, ast)

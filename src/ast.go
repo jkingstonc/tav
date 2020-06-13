@@ -1,25 +1,43 @@
 package src
 
-type ASTVisitor interface {
-	VisitStruct() *AST
-	VisitFun() *AST
-	VisitExpr() *AST
+type Visitor interface {
+	VisitStruct(s *StructAST) interface{}
+	VisitFun(f *FunAST) interface{}
 }
 
-type AST struct {
+type AST interface {
+	Visit() interface{}
+}
 
+type RootAST struct {
+	Statements    []AST
+}
+
+func (RootAST RootAST) Visit() interface{} {
+	return nil
 }
 
 type StructAST struct {
-	AST
 	Identifier *Token
 }
+
+func (StructAST StructAST) Visit() interface{}{
+	return nil
+}
+
 
 type FunAST struct {
-	AST
 	Identifier *Token
+	Body       *BlockAST
 }
 
-type ExprAST struct {
+func (FunAST FunAST) Visit() interface{}{
+	return nil
+}
 
+type BlockAST struct {
+}
+
+func (BlockAST BlockAST) Visit() interface{}{
+	return nil
 }

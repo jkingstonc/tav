@@ -16,6 +16,7 @@ func AheadCompile(source *string) uint8 {
 	tokens := Lex(compiler)
 	tokens = ProcessDirectives(compiler, tokens)
 	ast := Parse(compiler, tokens)
+	ast = Check(compiler, ast)
 	optimized := Optimize(compiler, ast)
 	return Generate(compiler, optimized)
 }
@@ -26,6 +27,7 @@ func JITCompile(source *string) (uint8, string) {
 	tokens := Lex(compiler)
 	tokens = ProcessDirectives(compiler, tokens)
 	ast := Parse(compiler, tokens)
+	ast = Check(compiler, ast)
 	optimized := Optimize(compiler, ast)
 	return JIT(compiler, optimized)
 }

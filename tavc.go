@@ -1,7 +1,6 @@
 package main
 
 import (
-	"go/ast"
 	"os"
 	"tav/src"
 )
@@ -11,12 +10,11 @@ const (
 	BUILD = 0x0
 )
 
-
 func main() {
 	src.Log("tav v_a_0_1")
 	args := os.Args[1:]
 
-	program := "X : fun(){\n}"
+	program := "Main : fn(){\n}"
 
 	if args[0] == "build" {
 		src.AheadCompile(&program)
@@ -24,7 +22,5 @@ func main() {
 		src.JITCompile(&program)
 	}
 
-
-	a := src.StructAST{}
 
 }

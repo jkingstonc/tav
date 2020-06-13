@@ -129,6 +129,24 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case '@':
 			lexer.Tok(ADDR, nil)
+		case '#':
+			if !lexer.CheckKeyword("def", DEF) {
+				if !lexer.CheckKeyword("run", RUN) {
+					if !lexer.CheckKeyword("ifdef", IFDEF) {
+						if !lexer.CheckKeyword("endif", ENDIF) {
+							if !lexer.CheckKeyword("hide", HIDE) {
+								if !lexer.CheckKeyword("pack", PACK) {
+									if !lexer.CheckKeyword("expose", EXPOSE) {
+										if !lexer.CheckKeyword("import", IMPORT) {
+											lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		default:
 			if !(IsChar(r) && lexer.Identifier(r)) {
 				lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
@@ -176,9 +194,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 				if !lexer.CheckKeyword("32", I32) {
 					if !lexer.CheckKeyword("64", I64) {
 						if !lexer.CheckKeyword("f", IF) {
-							if !lexer.CheckKeyword("fdef", IFDEF) {
-								return false
-							}
+							return false
 						}
 					}
 				}
@@ -188,7 +204,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 	case 'f':
 		if !lexer.CheckKeyword("32", F32) {
 			if !lexer.CheckKeyword("64", f64) {
-				if !lexer.CheckKeyword("un", FUN) {
+				if !lexer.CheckKeyword("n", FN) {
 					if !lexer.CheckKeyword("or", FOR) {
 						return false
 					}
@@ -224,23 +240,15 @@ func (lexer *Lexer) Identifier(r rune) bool {
 			return false
 		}
 		return true
-	case 'd':
-		if !lexer.CheckKeyword("ef", DEF) {
-			return false
-		}
 	case 'r':
-		if !lexer.CheckKeyword("un", RUN) {
-			if !lexer.CheckKeyword("eturn", RETURN) {
-				return false
-			}
+		if !lexer.CheckKeyword("eturn", RETURN) {
+			return false
 		}
 		return true
 	case 'e':
 		if !lexer.CheckKeyword("lif", ELIF) {
 			if !lexer.CheckKeyword("lse", ELSE) {
-				if !lexer.CheckKeyword("xpose", EXPOSE) {
-					return false
-				}
+				return false
 			}
 		}
 		return true
@@ -251,13 +259,13 @@ func (lexer *Lexer) Identifier(r rune) bool {
 			}
 		}
 		return true
-	case 'h':
-		if !lexer.CheckKeyword("ide", HIDE) {
+	case 'o':
+		if !lexer.CheckKeyword("r", OR) {
 			return false
 		}
 		return true
-	case 'o':
-		if !lexer.CheckKeyword("r", OR) {
+	case 'p':
+		if !lexer.CheckKeyword("ack", PACK) {
 			return false
 		}
 		return true
