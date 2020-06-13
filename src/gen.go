@@ -1,6 +1,8 @@
 package src
 
-import "time"
+import (
+	"time"
+	)
 
 // implements visitor
 type Generator struct {
@@ -9,8 +11,10 @@ type Generator struct {
 
 func Generate(compiler *Compiler, ast AST) uint8 {
 	start := time.Now()
+	//LLVMCompile(compiler, ast)
 
-	LLVMCompile(compiler, ast)
+
+
 
 	end := time.Since(start)
 	Log("back end took ", end.Seconds(), "seconds")

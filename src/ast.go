@@ -18,7 +18,6 @@ func (RootAST RootAST) Visit() interface{} {
 }
 
 type StructAST struct {
-	Identifier *Token
 }
 
 func (StructAST StructAST) Visit() interface{}{
@@ -27,8 +26,8 @@ func (StructAST StructAST) Visit() interface{}{
 
 
 type FunAST struct {
-	Identifier *Token
-	Body       *BlockAST
+	Body     *BlockAST
+	RetType  uint32
 }
 
 func (FunAST FunAST) Visit() interface{}{

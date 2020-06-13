@@ -80,7 +80,10 @@ func (lexConsumer *LexConsumer) End() bool {
 }
 
 func (parseConsumer *ParseConsumer) Peek() *Token {
-	return parseConsumer.Tokens[parseConsumer.Counter]
+	if !parseConsumer.End() {
+		return parseConsumer.Tokens[parseConsumer.Counter]
+	}
+	return nil
 }
 
 func (parseConsumer *ParseConsumer) Expect(tokenType uint32) bool {
@@ -99,7 +102,7 @@ func (parseConsumer *ParseConsumer) Consume(tokenType uint32) *Token {
 
 func (parseConsumer *ParseConsumer) ConsumeErr(tokenType uint32, errCode uint32, errMsg string) *Token {
 	t := parseConsumer.Peek()
-	if t.Type == tokenType{
+	if t != nil && t.Type == tokenType{
 		return parseConsumer.Advance()
 	}
 	parseConsumer.Compiler.Critical(parseConsumer.Reporter, errCode, errMsg)

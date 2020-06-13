@@ -19,7 +19,7 @@ type Lexer struct {
 func Lex(compiler *Compiler) []*Token {
 	start := time.Now()
 
-	reporter := NewReporter(compiler.Source)
+	reporter := NewReporter(compiler.FileName, compiler.Source)
 	consumer := NewLexConsumer(compiler.Source, reporter)
 
 	lexer := Lexer{
@@ -46,14 +46,12 @@ func (lexer *Lexer) Run() []*Token {
 			// issue here is that the lexer then doesn't know there is a line here
 			break
 		case '/':
-			lexer.Consumer.Advance()
 			if lexer.Consumer.Consume('/') {
 				lexer.LineComment()
 			} else if lexer.Consumer.Consume('*') {
 				lexer.BlockComment()
 			} else {
 				lexer.Tok(DIV, nil)
-				lexer.Consumer.Advance()
 			}
 		case '{':
 			lexer.Tok(LEFT_CURLY, nil)
@@ -138,7 +136,9 @@ func (lexer *Lexer) Run() []*Token {
 								if !lexer.CheckKeyword("pack", PACK, nil) {
 									if !lexer.CheckKeyword("expose", EXPOSE, nil) {
 										if !lexer.CheckKeyword("import", IMPORT, nil) {
-											lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
+											if !lexer.CheckKeyword("native", NATIVE, nil) {
+												lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
+											}
 										}
 									}
 								}
@@ -168,11 +168,18 @@ func (lexer *Lexer) LineComment() {
 }
 
 func (lexer *Lexer) BlockComment() {
+	for !lexer.Consumer.End(){
+		if lexer.Consumer.Consume('*'){
+			if lexer.Consumer.Consume('/'){
+				return
+			}
+		}
+		lexer.Consumer.Advance()
+	}
 }
 
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	t := &Token{tok, val}
-	t.Debug()
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 

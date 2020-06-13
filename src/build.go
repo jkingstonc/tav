@@ -11,8 +11,8 @@ const (
 )
 
 // compile to exe
-func AheadCompile(source *string) uint8 {
-	compiler := &Compiler{Source: source}
+func AheadCompile(filename string, source *string) uint8 {
+	compiler := &Compiler{FileName: filename, Source: source}
 	tokens := Lex(compiler)
 	tokens = ProcessDirectives(compiler, tokens)
 	ast := Parse(compiler, tokens)
@@ -22,8 +22,8 @@ func AheadCompile(source *string) uint8 {
 }
 
 // JIT compile using LLVM and return the result
-func JITCompile(source *string) (uint8, string) {
-	compiler := &Compiler{Source: source}
+func JITCompile(filename string, source *string) (uint8, string) {
+	compiler := &Compiler{FileName: filename, Source: source}
 	tokens := Lex(compiler)
 	tokens = ProcessDirectives(compiler, tokens)
 	ast := Parse(compiler, tokens)
