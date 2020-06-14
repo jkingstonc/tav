@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	ERR_MULTIPLE_SEMICOLON = 0x0
-	ERR_UNEXPECTED_CHAR    = 0x1
+	ERR_UNEXPECTED_CHAR 	   = 0x0
+	ERR_STRING_ESCAPED  	   = 0x1
+	ERR_INVALID_NUMBER_LITERAL = 0x2
 )
 
 type Lexer struct {
@@ -75,7 +76,11 @@ func (lexer *Lexer) Run() []*Token {
 					lexer.Tok(RANGE, nil)
 				}
 			} else {
-				lexer.Tok(PERIOD, nil)
+				if IsNum(lexer.Consumer.Peek()){
+					lexer.NumberLiteral(r)
+				}else {
+					lexer.Tok(PERIOD, nil)
+				}
 			}
 		case ';':
 			lexer.Tok(SEMICOLON, nil)
@@ -127,6 +132,10 @@ func (lexer *Lexer) Run() []*Token {
 			}
 		case '@':
 			lexer.Tok(ADDR, nil)
+		case '\'':
+			fallthrough
+		case '"':
+			lexer.StringLiteral(r)
 		case '#':
 			if !lexer.CheckKeyword("def", DEF, nil) {
 				if !lexer.CheckKeyword("run", RUN, nil) {
@@ -148,7 +157,11 @@ func (lexer *Lexer) Run() []*Token {
 				}
 			}
 		default:
-			if !(IsChar(r) && lexer.Identifier(r)) {
+			if IsChar(r){
+				lexer.Identifier(r)
+			}else if IsNum(r){
+				lexer.NumberLiteral(r)
+			}else{
 				lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
 			}
 		}
@@ -181,6 +194,41 @@ func (lexer *Lexer) BlockComment() {
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
 	t := &Token{lexer.Consumer.Reporter.Position,tok, val}
 	lexer.Tokens = append(lexer.Tokens, t)
+}
+
+func (lexer *Lexer) StringLiteral(r rune){
+	s := strings.Builder{}
+	for !lexer.Consumer.End() && lexer.Consumer.Peek() != r{
+		s.WriteRune(lexer.Consumer.Advance())
+	}
+	if lexer.Consumer.End(){
+		lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_STRING_ESCAPED, "string must be closed with ' or \"")
+	}else{
+		lexer.Tok(SLITERAL, s.String())
+	}
+}
+
+func (lexer *Lexer) NumberLiteral(r rune) bool{
+	hadPeriod := false
+	s := strings.Builder{}
+	if r == '.'{
+		hadPeriod = true
+		s.WriteRune('0')
+	}
+	s.WriteRune(r)
+	for !lexer.Consumer.End() && (IsNum(lexer.Consumer.Peek()) || lexer.Consumer.Expect('.')){
+		n := lexer.Consumer.Advance()
+		if n == '.' && hadPeriod == false{
+			hadPeriod = true
+		}else if n == '.' && hadPeriod == true{
+			lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_INVALID_NUMBER_LITERAL, "number cannot have more than 1 '.'")
+			return false
+		}
+		s.WriteRune(n)
+
+	}
+	lexer.Tok(NLITERAL, s.String())
+	return true
 }
 
 func (lexer *Lexer) Identifier(r rune) bool {
