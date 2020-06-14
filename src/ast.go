@@ -2,54 +2,54 @@ package src
 
 type Visitor interface {
 	// statements
-	VisitRootAST(RootAST *RootAST)
-	VisitReturnAST(ReturnAST *ReturnAST)
-	VisitBreakAST(BreakAST *BreakAST)
-	VisitForAST(ForAST *ForAST)
-	VisitIfAST(IfAST *IfAST)
-	VisitStructAST(StructAST *StructAST)
-	VisitFnAST(FnAST *FnAST)
-	VisitVarDefAST(VarDefAST *VarDefAST)
-	VisitBlockAST(BlockAST *BlockAST)
-	VisitExprSmtAST(ExprStmtAST *ExprStmtAST)
+	VisitRootAST(RootAST *RootAST) interface{}
+	VisitReturnAST(ReturnAST *ReturnAST) interface{}
+	VisitBreakAST(BreakAST *BreakAST) interface{}
+	VisitForAST(ForAST *ForAST) interface{}
+	VisitIfAST(IfAST *IfAST) interface{}
+	VisitStructAST(StructAST *StructAST) interface{}
+	VisitFnAST(FnAST *FnAST) interface{}
+	VisitVarDefAST(VarDefAST *VarDefAST)  interface{}
+	VisitBlockAST(BlockAST *BlockAST)  interface{}
+	VisitExprSmtAST(ExprStmtAST *ExprStmtAST)  interface{}
 	// expressions
-	VisitAssignAST(AsssignAST *AsssignAST)
-	VisitLiteralAST(LiteralAST *LiteralAST)
-	VisitListAST(ListAST *ListAST)
-	VisitVariableAST(VariableAST *VariableAST)
-	VisitUnaryAST(UnaryAST *UnaryAST)
-	VisitBinaryAST(BinaryAST *BinaryAST)
-	VisitConnectiveAST(ConnectiveAST *ConnectiveAST)
-	VisitCallAST(CallAST *CallAST)
-	VisitStructGetAST(StructGet *StructGetAST)
-	VisitStructSetAST(StructSetAST *StructSetAST)
-	VisitGroupAST(GroupAST *GroupAST)
+	VisitAssignAST(AsssignAST *AsssignAST)  interface{}
+	VisitLiteralAST(LiteralAST *LiteralAST)  interface{}
+	VisitListAST(ListAST *ListAST)  interface{}
+	VisitVariableAST(VariableAST *VariableAST)  interface{}
+	VisitUnaryAST(UnaryAST *UnaryAST)  interface{}
+	VisitBinaryAST(BinaryAST *BinaryAST)  interface{}
+	VisitConnectiveAST(ConnectiveAST *ConnectiveAST)  interface{}
+	VisitCallAST(CallAST *CallAST) interface{}
+	VisitStructGetAST(StructGet *StructGetAST) interface{}
+	VisitStructSetAST(StructSetAST *StructSetAST) interface{}
+	VisitGroupAST(GroupAST *GroupAST) interface{}
 }
 
 type AST interface {
-	Visit(Visitor Visitor)
+	Visit(Visitor Visitor) interface{}
 }
 
 // statements
 type RootAST struct {
 	Statements []AST
 }
-func (RootAST *RootAST) Visit(Visitor Visitor) {
-	Visitor.VisitRootAST(RootAST)
+func (RootAST *RootAST) Visit(Visitor Visitor) interface{}{
+	return Visitor.VisitRootAST(RootAST)
 }
 type ReturnAST struct {
 	Value AST
 }
-func (ReturnAST *ReturnAST) Visit(Visitor Visitor) {
-	Visitor.VisitReturnAST(ReturnAST)
+func (ReturnAST *ReturnAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitReturnAST(ReturnAST)
 }
 type BreakAST struct{}
-func (BreakAST *BreakAST) Visit(Visitor Visitor) {
-	Visitor.VisitBreakAST(BreakAST)
+func (BreakAST *BreakAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitBreakAST(BreakAST)
 }
 type ForAST struct {}
-func (ForAST *ForAST) Visit(Visitor Visitor) {
-	Visitor.VisitForAST(ForAST)
+func (ForAST *ForAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitForAST(ForAST)
 }
 type IfAST struct {
 	IfCondition AST
@@ -60,16 +60,16 @@ type IfAST struct {
 
 	ElseBody AST
 }
-func (IfAST *IfAST) Visit(Visitor Visitor) {
-	Visitor.VisitIfAST(IfAST)
+func (IfAST *IfAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitIfAST(IfAST)
 }
 type StructAST struct {
 	Identifier *Token
 	Fields     []*VarDefAST
 	Packed     bool
 }
-func (StructAST *StructAST) Visit(Visitor Visitor) {
-	Visitor.VisitStructAST(StructAST)
+func (StructAST *StructAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitStructAST(StructAST)
 }
 type FnAST struct {
 	Identifier *Token
@@ -78,28 +78,28 @@ type FnAST struct {
 	RetType    TavType
 	Variadic   bool
 }
-func (FnAST *FnAST) Visit(Visitor Visitor) {
-	Visitor.VisitFnAST(FnAST)
+func (FnAST *FnAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitFnAST(FnAST)
 }
 type VarDefAST struct {
 	Identifier *Token
 	Type       TavType
 	Assignment AST
 }
-func (VarDefAST *VarDefAST) Visit(Visitor Visitor) {
-	Visitor.VisitVarDefAST(VarDefAST)
+func (VarDefAST *VarDefAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitVarDefAST(VarDefAST)
 }
 type BlockAST struct {
 	Statements []AST
 }
-func (BlockAST *BlockAST) Visit(Visitor Visitor) {
-	Visitor.VisitBlockAST(BlockAST)
+func (BlockAST *BlockAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitBlockAST(BlockAST)
 }
 type ExprStmtAST struct {
 	Expression AST
 }
-func (ExprStmtAST *ExprStmtAST) Visit(Visitor Visitor) {
-	Visitor.VisitExprSmtAST(ExprStmtAST)
+func (ExprStmtAST *ExprStmtAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitExprSmtAST(ExprStmtAST)
 }
 
 // expressions
@@ -107,74 +107,74 @@ type AsssignAST struct { // assign to a non-member variable
 	Identifier *Token
 	Value      AST
 }
-func (AsssignAST *AsssignAST) Visit(Visitor Visitor) {
-	Visitor.VisitAssignAST(AsssignAST)
+func (AsssignAST *AsssignAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitAssignAST(AsssignAST)
 }
 type LiteralAST struct {
-	Type  uint32
-	Value interface{}
+	Type  TavType
+	Value TavValue
 }
-func (LiteralAST *LiteralAST) Visit(Visitor Visitor) {
-	Visitor.VisitLiteralAST(LiteralAST)
+func (LiteralAST *LiteralAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitLiteralAST(LiteralAST)
 }
 type ListAST struct{}
-func (ListAST *ListAST) Visit(Visitor Visitor) {
-	Visitor.VisitListAST(ListAST)
+func (ListAST *ListAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitListAST(ListAST)
 }
 type VariableAST struct {
 	Identifier *Token
 }
-func (VariableAST *VariableAST) Visit(Visitor Visitor) {
-	Visitor.VisitVariableAST(VariableAST)
+func (VariableAST *VariableAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitVariableAST(VariableAST)
 }
 type UnaryAST struct {
 	Operator *Token
 	Right    AST
 }
-func (UnaryAST *UnaryAST) Visit(Visitor Visitor) {
-	Visitor.VisitUnaryAST(UnaryAST)
+func (UnaryAST *UnaryAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitUnaryAST(UnaryAST)
 }
 type BinaryAST struct {
 	Left     AST
 	Operator *Token
 	Right    AST
 }
-func (BinaryAST *BinaryAST) Visit(Visitor Visitor) {
-	Visitor.VisitBinaryAST(BinaryAST)
+func (BinaryAST *BinaryAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitBinaryAST(BinaryAST)
 }
 type ConnectiveAST struct {
 	Left     AST
 	Operator *Token
 	Right    AST
 }
-func (ConnectiveAST *ConnectiveAST) Visit(Visitor Visitor) {
-	Visitor.VisitConnectiveAST(ConnectiveAST)
+func (ConnectiveAST *ConnectiveAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitConnectiveAST(ConnectiveAST)
 }
 type CallAST struct {
 	Caller AST
 	Args   []AST
 }
-func (CallAST *CallAST) Visit(Visitor Visitor) {
-	Visitor.VisitCallAST(CallAST)
+func (CallAST *CallAST) Visit(Visitor Visitor)  interface{}{
+	return Visitor.VisitCallAST(CallAST)
 }
 type StructGetAST struct {
 	Struct AST
 	Member *Token
 }
-func (StructGetAST *StructGetAST) Visit(Visitor Visitor) {
-	Visitor.VisitStructGetAST(StructGetAST)
+func (StructGetAST *StructGetAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitStructGetAST(StructGetAST)
 }
 type StructSetAST struct {
 	Struct AST
 	Member *Token
 	Value  AST
 }
-func (StructSetAST *StructSetAST) Visit(Visitor Visitor) {
-	Visitor.VisitStructSetAST(StructSetAST)
+func (StructSetAST *StructSetAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitStructSetAST(StructSetAST)
 }
 type GroupAST struct {
 	Group AST
 }
-func (GroupAST *GroupAST) Visit(Visitor Visitor) {
-	Visitor.VisitGroupAST(GroupAST)
+func (GroupAST *GroupAST) Visit(Visitor Visitor) interface{} {
+	return Visitor.VisitGroupAST(GroupAST)
 }

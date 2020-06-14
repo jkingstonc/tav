@@ -16,51 +16,91 @@ const (
 
 // a symbol is identified by a type and an attribute
 type Symbol struct {
-	Type        uint8
+	Identifier  string
+	Type        TavType
 	Attribuites uint8
+	Value       interface{}		// used for value checks etc
 }
 
 // keep a record of symbol identifiers along with their type and attribute
 type SymTable struct {
 	// used so we can keep track of the scope of variables
 	Parent   *SymTable
-	Symbols  map[uint32]Symbol
-	SymbolID map[string]uint32
-	Counter  uint32
+	Symbols  []*Symbol
 }
 
 // create a new symbol table
-func NewSymTable() *SymTable {
+func NewSymTable(parent *SymTable) *SymTable {
 	return &SymTable{
-		SymbolID: make(map[string]uint32),
-		Symbols:  make(map[uint32]Symbol),
+		Parent: parent,
 	}
 }
 
-// add a symbol to the table and retrieve the integer id
-func (symTable *SymTable) Add(identifier string, symType, attributes uint8) uint32{
-	_, ok := symTable.SymbolID[identifier]
-	Log(ok, identifier)
-	Assert(!ok, "symbol already exists in symbol table", identifier)
-	symTable.SymbolID[identifier] = symTable.Counter
-	symTable.Symbols[symTable.Counter] = Symbol{Type: symType, Attribuites: attributes}
-	symTable.Counter++
-	return symTable.Counter-1
+// enter a new scope in the symbol table
+func (symTable *SymTable) NewScope() *SymTable{
+
+	// create a new table
+	newTable := NewSymTable(symTable)
+	// add it to the current scope
+	symTable.Add("", TavType{
+		Type:   TYPE_SYM_TABLE,
+		IsPtr:  false,
+		PtrVal: nil,
+	},0, newTable)
+	// return the new table
+	return newTable
 }
 
-// get the symbol id given an identifier string
-func (symTable *SymTable) GetID(identifier string) uint32 {
-	id, ok := symTable.SymbolID[identifier]
-	Assert(ok, "cannot retrieve symbol id, doesn't exist", identifier)
-	return id
+// return from the scope in the symbol table
+func (symTable *SymTable) PopScope() *SymTable{
+	parent := symTable.Parent
+	parent.RemoveByValue(symTable)
+	return parent
+}
+
+// add a symbol to the table and retrieve the integer id
+func (symTable *SymTable) Add(identifier string, symType TavType, attributes uint8, value interface{}) {
+	symTable.Symbols = append(symTable.Symbols, &Symbol{
+		Identifier:  identifier,
+		Type:        symType,
+		Attribuites: attributes,
+		Value:       value,
+	})
+}
+
+
+// get the symbol value given an id
+func (symTable *SymTable) Get(identifier string) *Symbol {
+	for _, sym := range symTable.Symbols{
+		if sym.Identifier == identifier {
+			return sym
+		}
+	}
+	return nil
 }
 
 // get the symbol value given an id
-func (symTable *SymTable) Get(id uint32) Symbol {
-	sym, ok := symTable.Symbols[id]
-	Assert(ok, "symbol couldn't be found in the symbol table", string(id))
-	return sym
+func (symTable *SymTable) RemoveByID(identifier string){
+	for i, sym := range symTable.Symbols{
+		if sym.Identifier == identifier{
+			symTable.Symbols = append(symTable.Symbols[:i], symTable.Symbols[i+1:]...)
+			return
+		}
+	}
+	Assert(true, "symbol couldn't be removed (doesn't exist!)")
 }
+
+// get the symbol value given an id
+func (symTable *SymTable) RemoveByValue(value interface{}){
+	for i, sym := range symTable.Symbols{
+		if sym.Value == value{
+			symTable.Symbols = append(symTable.Symbols[:i], symTable.Symbols[i+1:]...)
+			return
+		}
+	}
+	Assert(true, "symbol couldn't be removed (doesn't exist!)")
+}
+
 
 // hash function to hash a string
 func hash(s string) uint32 {

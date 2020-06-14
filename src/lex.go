@@ -234,10 +234,10 @@ func (lexer *Lexer) NumberLiteral(r rune) bool{
 func (lexer *Lexer) Identifier(r rune) bool {
 	switch r {
 	case 'u':
-		if !lexer.CheckKeyword("8", TYPE, U8) {
-			if !lexer.CheckKeyword("16", TYPE, U16) {
-				if !lexer.CheckKeyword("32", TYPE, U32) {
-					if !lexer.CheckKeyword("64", TYPE, U64) {
+		if !lexer.CheckKeyword("8", TYPE, TYPE_U8) {
+			if !lexer.CheckKeyword("16", TYPE, TYPE_U16) {
+				if !lexer.CheckKeyword("32", TYPE, TYPE_U32) {
+					if !lexer.CheckKeyword("64", TYPE, TYPE_U64) {
 						return false
 					}
 				}
@@ -245,10 +245,10 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'i':
-		if !lexer.CheckKeyword("8", TYPE, I8) {
-			if !lexer.CheckKeyword("16", TYPE, I16) {
-				if !lexer.CheckKeyword("32", TYPE, I32) {
-					if !lexer.CheckKeyword("64", TYPE, I64) {
+		if !lexer.CheckKeyword("8", TYPE, TYPE_I8) {
+			if !lexer.CheckKeyword("16", TYPE, TYPE_I16) {
+				if !lexer.CheckKeyword("32", TYPE, TYPE_I32) {
+					if !lexer.CheckKeyword("64", TYPE, TYPE_I64) {
 						if !lexer.CheckKeyword("f", IF, nil) {
 							return false
 						}
@@ -258,9 +258,9 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'f':
-		if !lexer.CheckKeyword("32", TYPE, F32) {
-			if !lexer.CheckKeyword("64", TYPE, F64) {
-				if !lexer.CheckKeyword("n", TYPE, FN) {
+		if !lexer.CheckKeyword("32", TYPE, TYPE_F32) {
+			if !lexer.CheckKeyword("64", TYPE, TYPE_F64) {
+				if !lexer.CheckKeyword("n", TYPE, TYPE_FN) {
 					if !lexer.CheckKeyword("or", FOR, nil) {
 						return false
 					}
@@ -269,15 +269,15 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'b':
-		if !lexer.CheckKeyword("ool", TYPE, BOOL) {
+		if !lexer.CheckKeyword("ool", TYPE, TYPE_BOOL) {
 			if !lexer.CheckKeyword("reak", BREAK, nil) {
 				return false
 			}
 		}
 		return true
 	case 's':
-		if !lexer.CheckKeyword("tring", TYPE, STRING) {
-			if !lexer.CheckKeyword("truct", TYPE, STRUCT) {
+		if !lexer.CheckKeyword("tring", TYPE, TYPE_STRING) {
+			if !lexer.CheckKeyword("truct", TYPE, TYPE_STRUCT) {
 				if !lexer.CheckKeyword("witch", SWITCH, nil) {
 					return false
 				}
@@ -285,7 +285,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'a':
-		if !lexer.CheckKeyword("ny", TYPE, ANY) {
+		if !lexer.CheckKeyword("ny", TYPE, TYPE_ANY) {
 			if !lexer.CheckKeyword("nd", AND, nil) {
 				return false
 			}

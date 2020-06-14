@@ -6,6 +6,22 @@
 	.globl	@feat.00
 .set @feat.00, 0
 	.file	"test.ll"
+	.def	 test;
+	.scl	2;
+	.type	32;
+	.endef
+	.section	.rdata,"dr"
+	.p2align	2               # -- Begin function test
+.LCPI0_0:
+	.long	1067869798              # float 1.29999995
+	.text
+	.globl	test
+	.p2align	4, 0x90
+test:                                   # @test
+# %bb.0:
+	movss	.LCPI0_0(%rip), %xmm0   # xmm0 = mem[0],zero,zero,zero
+	retq
+                                        # -- End function
 	.def	 main;
 	.scl	2;
 	.type	32;
