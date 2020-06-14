@@ -39,10 +39,10 @@ func (lexer *Lexer) Run() []*Token {
 		lexer.Consumer.SkipWhitespace()
 		r := lexer.Consumer.Advance()
 		switch r {
-		case '\n':
-			fallthrough
-		case '\r':
+		case '\n':  // newline
 			lexer.Newline()
+		case '\r':	// carrige return
+			lexer.Consumer.Reporter.Position.Indent = 1
 			// issue here is that the lexer then doesn't know there is a line here
 			break
 		case '/':
@@ -179,7 +179,7 @@ func (lexer *Lexer) BlockComment() {
 }
 
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
-	t := &Token{tok, val}
+	t := &Token{lexer.Consumer.Reporter.Position,tok, val}
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 

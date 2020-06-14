@@ -24,18 +24,16 @@ type Reporter struct {
 }
 
 func NewReporter(filename string, source *string) *Reporter {
-	return &Reporter{filename, source, "", Position{}}
+	return &Reporter{filename, source, "", Position{Indent: 0, Line: 1,}}
 }
 
 // display the current line and position we are processing
 func (reporter *Reporter) ReportLine() string {
 	// get a scanner to find the line that the error is at
 	scanner := bufio.NewScanner(strings.NewReader(*reporter.Source))
-	for i := 0; i < int(reporter.Position.Line+1); i++ {
+	for i := 0; i < int(reporter.Position.Line); i++ {
 		scanner.Scan()
 	}
-	Log(reporter.FileName)
-	Log("\\/")
 	// first display the line
 	Log(scanner.Text())
 	// then display where we are in that line
@@ -45,7 +43,7 @@ func (reporter *Reporter) ReportLine() string {
 	}
 	str.WriteString("^\n")
 	for i := 0; i < int(reporter.Position.Indent)-2; i++ {
-		str.WriteString("_")
+		str.WriteString(" ")
 	}
 	str.WriteString("/")
 	return str.String()

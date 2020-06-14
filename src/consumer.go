@@ -112,14 +112,14 @@ func (parseConsumer *ParseConsumer) ConsumeErr(tokenType uint32, errCode uint32,
 func (parseConsumer *ParseConsumer) Advance() *Token {
 	t := parseConsumer.Tokens[parseConsumer.Counter]
 	parseConsumer.Counter++
-	parseConsumer.Reporter.Position.Indent++
+	parseConsumer.Reporter.Position = t.Position
 	return t
 }
 
 func (parseConsumer *ParseConsumer) AdvanceMul(ammount uint32) *Token {
 	t := parseConsumer.Tokens[parseConsumer.Counter]
 	parseConsumer.Counter += ammount
-	parseConsumer.Reporter.Position.Indent += ammount
+	parseConsumer.Reporter.Position = t.Position
 	return t
 }
 func (parseConsumer *ParseConsumer) End() bool {

@@ -89,8 +89,9 @@ var (
 )
 
 type Token struct {
-	Type  uint32
-	Value interface{}
+	Position Position
+	Type  	 uint32
+	Value 	 interface{}
 }
 
 func (token *Token) Debug() {

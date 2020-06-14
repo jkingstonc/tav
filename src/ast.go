@@ -2,7 +2,7 @@ package src
 
 type Visitor interface {
 	VisitStruct(s *StructAST) interface{}
-	VisitFun(f *FunAST) interface{}
+	VisitFn(f *FnAST) interface{}
 }
 
 type AST interface {
@@ -18,6 +18,7 @@ func (RootAST RootAST) Visit() interface{} {
 }
 
 type StructAST struct {
+	Identifier *Token
 }
 
 func (StructAST StructAST) Visit() interface{}{
@@ -25,12 +26,13 @@ func (StructAST StructAST) Visit() interface{}{
 }
 
 
-type FunAST struct {
-	Body     *BlockAST
-	RetType  uint32
+type FnAST struct {
+	Identifier  *Token
+	Body     	*BlockAST
+	RetType     uint32
 }
 
-func (FunAST FunAST) Visit() interface{}{
+func (FunAST FnAST) Visit() interface{}{
 	return nil
 }
 

@@ -47,16 +47,16 @@ func (parser *Parser) Run() AST {
 }
 
 // parse a struct
-func (parser *Parser) Struct() AST {
-	s := &StructAST{}
+func (parser *Parser) Struct(identifier *Token) AST {
+	s := &StructAST{Identifier: identifier,}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{'")
-	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '}'")
+	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
 	return s
 }
 
 // parse a function
-func (parser *Parser) Fun() AST {
-	f := &FunAST{}
+func (parser *Parser) Fun(identifier *Token) AST {
+	f := &FnAST{Identifier: identifier,}
 	if t:=parser.Consumer.Consume(TYPE); t!=nil{
 		f.RetType = t.Value.(uint32)
 	}
@@ -64,10 +64,10 @@ func (parser *Parser) Fun() AST {
 
 		// process the arguments
 
-		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected ')'")
+		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 	}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{'")
-	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '}'")
+	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
 	return f
 }
 
@@ -85,9 +85,9 @@ func (parser *Parser) Define(identifier *Token) AST{
 		def.Type = t.Value.(uint32)
 		switch def.Type {
 		case STRUCT:
-			def.Assignment = parser.Struct()
+			return parser.Struct(identifier)
 		case FN:
-			def.Assignment = parser.Fun()
+			return parser.Fun(identifier)
 		default:
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
