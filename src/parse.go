@@ -13,11 +13,11 @@ type Parser struct {
 	Compiler     *Compiler
 	Consumer     *ParseConsumer
 	SymTable     *SymTable
-	Root 		 AST
+	Root 		 *RootAST
 	DirectiveBuf *DirectiveBuf
 }
 
-func Parse(compiler *Compiler, tokens []*Token) AST {
+func Parse(compiler *Compiler, tokens []*Token) *RootAST {
 	reporter := NewReporter(compiler.FileName, compiler.Source)
 	consumer := NewParseConsumer(tokens, reporter, compiler)
 
@@ -30,7 +30,7 @@ func Parse(compiler *Compiler, tokens []*Token) AST {
 	return parser.Root
 }
 
-func (parser *Parser) Run() AST {
+func (parser *Parser) Run() *RootAST {
 	Root := &RootAST{}
 	for !parser.Consumer.End() {
 		t := parser.Consumer.Advance()
@@ -55,10 +55,8 @@ func (parser *Parser) Struct(identifier *Token) AST {
 
 // parse a function
 func (parser *Parser) Fun(identifier *Token) AST {
-	f := &FnAST{Identifier: identifier,}
-	if t:=parser.Consumer.Consume(TYPE); t!=nil{
-		f.RetType = t.Value.(uint32)
-	}
+	f := &FnAST{Identifier: identifier,RetType: *parser.ParseType()}
+
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 
 		// process the arguments
@@ -73,16 +71,16 @@ func (parser *Parser) Fun(identifier *Token) AST {
 // parse a variable definition (this only includes the identifier and type e.g. X : i32;, and assigning to
 // a definition e.g. X : i32 = 1;)
 func (parser *Parser) Define(identifier *Token) AST{
-	def := &DefineAST{
+	def := &VarDefAST{
 		Identifier: identifier,
-		Type:       0,
+		Type:       TavType{},
 		Assignment: nil,
 	}
 	// explicit type define
 	if parser.Consumer.Consume(COLON) != nil{
-		t := parser.Consumer.ConsumeErr(TYPE, ERR_UNEXPECTED_TOKEN, "expected type after ':'")
-		def.Type = t.Value.(uint32)
-		switch def.Type {
+		// check if we have a pointer
+		def.Type = *parser.ParseType()
+		switch def.Type.Type {
 		case STRUCT:
 			return parser.Struct(identifier)
 		case FN:
@@ -105,8 +103,12 @@ func (parser *Parser) Define(identifier *Token) AST{
 
 // FOR NOW, WE DON'T SUPPORT QUICK ASSIGNING STRUCTS OR FUNCTIONS
 // parse a variable quick assign (e.g. X := 1)
-func (parser *Parser) QuickAssign() (uint32, AST){
-	return ANY, parser.Expression()
+func (parser *Parser) QuickAssign() (TavType, AST){
+	return TavType{
+		Type: ANY,
+		IsPtr:  false,
+		PtrVal: nil,
+	}, parser.Expression()
 }
 
 func (parser *Parser) Expression() AST {
@@ -115,6 +117,26 @@ func (parser *Parser) Expression() AST {
 
 // figure out the type of an expression
 // TODO For now this will return ANY type
-func (parser *Parser) FigureType(expression ExprAST) uint32{
+func (parser *Parser) FigureType(expression ExprStmtAST) uint32{
 	return ANY
+}
+
+// parse a type
+func (parser *Parser) ParseType() *TavType{
+	typ := &TavType{
+		Type:   0,
+		IsPtr:  false,
+		PtrVal: nil,
+	}
+	// if it is a pointer, recursively get the pointer value
+	if parser.Consumer.Consume(STAR) != nil{
+		typ.IsPtr = true
+		typ.PtrVal = parser.ParseType()
+	}else{
+		if t:=parser.Consumer.Consume(TYPE); t!=nil{
+			// it isn't a pointer, so get the type
+			typ.Type = t.Value.(uint32);
+		}
+	}
+	return typ
 }

@@ -7,6 +7,12 @@ const (
 	CRITICAL = 0x1
 )
 
+type TavType struct {
+	Type    uint32
+	IsPtr   bool
+	PtrVal  *TavType
+}
+
 type Compiler struct {
 	FileName  string
 	Source   *string

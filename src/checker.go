@@ -6,6 +6,6 @@ type Checker struct {
 	SymTable  *SymTable
 }
 
-func Check (compiler *Compiler, ast AST) AST{
-	return ast
+func Check (compiler *Compiler, RootAST *RootAST) *RootAST{
+	return RootAST
 }

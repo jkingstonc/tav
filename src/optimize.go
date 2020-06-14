@@ -1,5 +1,5 @@
 package src
 
-func Optimize(compiler *Compiler, ast AST) AST {
-	return nil
+func Optimize(compiler *Compiler, RootAST *RootAST) *RootAST {
+	return RootAST
 }
