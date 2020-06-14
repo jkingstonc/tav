@@ -31,11 +31,10 @@ func Parse(compiler *Compiler, tokens []*Token) AST {
 }
 
 func (parser *Parser) Run() AST {
-
 	Root := &RootAST{}
-
 	for !parser.Consumer.End() {
 		t := parser.Consumer.Advance()
+		// any top level expression is an identifier
 		switch t.Type {
 		case IDENTIFIER:
 			Root.Statements = append(Root.Statements, parser.Define(t))

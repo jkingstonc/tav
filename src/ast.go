@@ -6,57 +6,97 @@ type Visitor interface {
 }
 
 type AST interface {
-	Visit() interface{}
 }
+
+
+// STATEMENTS
 
 type RootAST struct {
 	Statements    []AST
 }
 
-func (RootAST RootAST) Visit() interface{} {
-	return nil
+type ReturnAST struct{
+	Value   AST
 }
+type ContinueAST struct{}
+type BreakAST struct{}
+type ForAST struct{
 
+}
+type IfAST struct{
+	IfCondition   AST
+	IfBody	      AST
+
+	ElifCondition []AST
+	ElifBody	  []AST
+
+	ElseBody	  AST
+}
 type StructAST struct {
 	Identifier *Token
 }
-
-func (StructAST StructAST) Visit() interface{}{
-	return nil
-}
-
-
 type FnAST struct {
 	Identifier  *Token
+	Params      []VarDefAST	// the paramaters is an array of definitions
 	Body     	*BlockAST
 	RetType     uint32
+	Variadic    bool
 }
-
-func (FunAST FnAST) Visit() interface{}{
-	return nil
-}
-
-type DefineAST struct {
+type VarDefAST struct{
 	Identifier *Token
 	Type 	   uint32
 	Assignment AST
 }
-
-func (DefineAST DefineAST) Visit() interface{}{
-	return nil
+type BlockAST struct{
+	Statements []AST
+}
+type ExprStmtAST struct{
+	Expression AST
 }
 
-// an expression e.g. (1+2) or (x.Buffer = 1)
-type ExprAST struct{
 
-}
+// EXPRESSIONS
 
-func (ExprAST ExprAST) Visit() interface{}{
-	return nil
+type AsssignAST struct{			// assign to a non-member variable
+	Identifier *Token
+	Value	   AST
 }
-type BlockAST struct {
+// Represents a literal value
+type LiteralAST struct {
+	Type uint32
+	Value interface{}
 }
-
-func (BlockAST BlockAST) Visit() interface{}{
-	return nil
+type ListAST struct {}
+type VariableAST struct {
+	Identifier *Token
+}
+type UnaryAST struct {
+	Operator  *Token
+	Right     AST
+}
+type BinaryAST struct {
+	Left	   AST
+	Operator   *Token
+	Right	   AST
+}
+type ConnectiveAST struct {
+	Left	   AST
+	Operator   *Token
+	Right	   AST
+}
+type CallAST struct {
+	Caller    AST
+	Args      []AST
+}
+type StructGetAST struct {
+	Struct    AST
+	Member    *Token
+}
+type StructSetAST struct {
+	Struct    AST
+	Member    *Token
+	Value     AST
+}
+type GroupAST struct {
+	Group     AST
 }
