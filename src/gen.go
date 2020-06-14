@@ -1,16 +1,20 @@
 package src
 
 import (
-	"github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/constant"
+	"io/ioutil"
+	"os/exec"
 	"time"
 
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/types"
 )
 
 // implements visitor
 type Generator struct {
-	Root   *RootAST
-	Module *ir.Module
+	Root   		 *RootAST
+	Module 	     *ir.Module
+	CurrentBlock []*ir.Block
 }
 
 func (generator *Generator) VisitRootAST(RootAST *RootAST) {
@@ -20,6 +24,8 @@ func (generator *Generator) VisitRootAST(RootAST *RootAST) {
 }
 
 func (generator *Generator) VisitReturnAST(ReturnAST *ReturnAST) {
+	b:=generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b.NewRet(constant.NewInt(types.I32, 1))
 }
 
 func (generator *Generator) VisitBreakAST(BreakAST *BreakAST) {
@@ -32,10 +38,22 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) {
 }
 
 func (generator *Generator) VisitStructAST(StructAST *StructAST) {
+	s := types.NewStruct()
+	s.Packed = StructAST.Packed
+	for _, field := range StructAST.Fields{
+		s.Fields = append(s.Fields, LLType(field.Type))
+	}
+	generator.Module.NewTypeDef(StructAST.Identifier.Value.(string), s)
 }
 
 func (generator *Generator) VisitFnAST(FnAST *FnAST) {
-	generator.Module.NewFunc(FnAST.Identifier.Value.(string), types.I32)
+	f := generator.Module.NewFunc(FnAST.Identifier.Value.(string), LLType(FnAST.RetType))
+	b := f.NewBlock("")
+	generator.CurrentBlock = append(generator.CurrentBlock, b)		// push the block to the stack
+	for _, stmt := range FnAST.Body{
+		stmt.Visit(generator)
+	}
+	generator.CurrentBlock = generator.CurrentBlock[:len(generator.CurrentBlock) - 1] // pop the block from the stack
 }
 
 func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) {
@@ -91,9 +109,18 @@ func Generate(compiler *Compiler, RootAST *RootAST) uint8 {
 	}
 
 	result := generator.Run()
-
-	Log("generator result")
 	Log(generator.Module.String())
+
+	ioutil.WriteFile("tmp/test.ll", []byte(generator.Module.String()), 0644)
+	c:=exec.Command("llc","tmp/test.ll")
+	err := c.Run()
+	Log(err)
+	c=exec.Command("gcc","-c","tmp/test.s","-o", "tmp/test.o")
+	err = c.Run()
+	Log(err)
+	c=exec.Command("gcc", "tmp/test.o", "-o", "tmp/test")
+	err = c.Run()
+	Log(err)
 
 	end := time.Since(start)
 	Log("back end took ", end.Seconds(), "seconds")

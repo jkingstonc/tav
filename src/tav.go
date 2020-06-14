@@ -1,6 +1,9 @@
 package src
 
-import "os"
+import (
+	"github.com/llir/llvm/ir/types"
+	"os"
+)
 
 const (
 	WARNING  = 0x0
@@ -42,4 +45,30 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 	Log(msg)
 	Log("\n")
 	os.Exit(2)
+}
+
+func LLType(tavType TavType) types.Type{
+	switch tavType.Type {
+	case I8:
+		if tavType.IsPtr {
+			return types.I8Ptr
+		}
+		return types.I8
+	case I16:
+		if tavType.IsPtr {
+			return types.I16Ptr
+		}
+		return types.I16
+	case I32:
+		if tavType.IsPtr {
+			return types.I32Ptr
+		}
+		return types.I32
+	case I64:
+		if tavType.IsPtr {
+			return types.I64Ptr
+		}
+		return types.I64
+	}
+	return types.Void
 }

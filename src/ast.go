@@ -65,6 +65,8 @@ func (IfAST *IfAST) Visit(Visitor Visitor) {
 }
 type StructAST struct {
 	Identifier *Token
+	Fields     []*VarDefAST
+	Packed     bool
 }
 func (StructAST *StructAST) Visit(Visitor Visitor) {
 	Visitor.VisitStructAST(StructAST)
@@ -72,7 +74,7 @@ func (StructAST *StructAST) Visit(Visitor Visitor) {
 type FnAST struct {
 	Identifier *Token
 	Params     []VarDefAST // the paramaters is an array of definitions
-	Body       *BlockAST
+	Body       []AST
 	RetType    TavType
 	Variadic   bool
 }

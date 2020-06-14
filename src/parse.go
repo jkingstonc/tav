@@ -33,11 +33,11 @@ func Parse(compiler *Compiler, tokens []*Token) *RootAST {
 func (parser *Parser) Run() *RootAST {
 	Root := &RootAST{}
 	for !parser.Consumer.End() {
-		t := parser.Consumer.Advance()
+		t := parser.Consumer.Peek()
 		// any top level expression is an identifier
 		switch t.Type {
 		case IDENTIFIER:
-			Root.Statements = append(Root.Statements, parser.Define(t))
+			Root.Statements = append(Root.Statements, parser.Define())
 		default:
 			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "unexpected token")
 		}
@@ -45,10 +45,70 @@ func (parser *Parser) Run() *RootAST {
 	return Root
 }
 
+func (parser *Parser) Prelim() AST {
+	return parser.Statement()
+}
+
+func (parser *Parser) Statement() AST {
+	if parser.Consumer.Consume(RETURN)!=nil{
+		return parser.Return()
+	}else if parser.Consumer.Consume(BREAK)!=nil{
+		return parser.Break()
+	}else if parser.Consumer.Consume(FOR)!=nil{
+		return parser.For()
+	}else if parser.Consumer.Consume(IF)!=nil{
+		return parser.If()
+	}else if parser.Consumer.Consume(LEFT_CURLY)!=nil{
+		return &BlockAST{Statements: parser.ParseStmtBlock()}
+	}else{
+		return parser.ExpressionStmt()
+	}
+}
+
+func (parser *Parser) ExpressionStmt() AST{
+	return &ExprStmtAST{Expression: parser.Expression()}
+}
+
+func (parser *Parser) Return() AST {
+	r := &ReturnAST{Value: parser.Expression()}
+	parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after 'return'")
+	return r
+}
+
+func (parser *Parser) Break() AST {
+	r := &ReturnAST{Value: parser.Expression()}
+	return r
+}
+
+func (parser *Parser) For() AST {
+	r := &ReturnAST{Value: parser.Expression()}
+	return r
+}
+
+func (parser *Parser) If() AST {
+	r := &ReturnAST{Value: parser.Expression()}
+	return r
+}
+
+func (parser *Parser) ParseStmtBlock() []AST {
+	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' at start of statement block")
+	var statements []AST
+	for (!parser.Consumer.Expect(RIGHT_CURLY) && !parser.Consumer.End()){
+		statements = append(statements, parser.Prelim())
+	}
+	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '}' at end of statement block")
+	return statements
+}
+
 // parse a struct
 func (parser *Parser) Struct(identifier *Token) AST {
 	s := &StructAST{Identifier: identifier,}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
+
+	for !parser.Consumer.Expect(RIGHT_CURLY){
+		s.Fields = append(s.Fields, parser.Define().(*VarDefAST))
+	}
+
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
 	return s
 }
@@ -63,14 +123,22 @@ func (parser *Parser) Fun(identifier *Token) AST {
 
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 	}
-	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after ')'")
-	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
+	if parser.Consumer.Expect(LEFT_CURLY){
+		statements := parser.ParseStmtBlock()
+		f.Body = statements
+
+
+		Log("done function", f.Body)
+	}else{
+		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after fn decleration")
+	}
 	return f
 }
 
 // parse a variable definition (this only includes the identifier and type e.g. X : i32;, and assigning to
 // a definition e.g. X : i32 = 1;)
-func (parser *Parser) Define(identifier *Token) AST{
+func (parser *Parser) Define() AST{
+	identifier := parser.Consumer.Consume(IDENTIFIER)
 	def := &VarDefAST{
 		Identifier: identifier,
 		Type:       TavType{},
@@ -112,7 +180,11 @@ func (parser *Parser) QuickAssign() (TavType, AST){
 }
 
 func (parser *Parser) Expression() AST {
-	return nil
+	parser.Consumer.Advance()
+	return &LiteralAST{
+		Type:  U32,
+		Value: 1,
+	}
 }
 
 // figure out the type of an expression
