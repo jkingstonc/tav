@@ -149,7 +149,7 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 		var params []*VarDefAST
 		// process the arguments
-		for true {
+		for !parser.Consumer.Expect(RIGHT_PAREN) {
 			// each paramater is essentially a variable decleration
 			params = append(params, parser.Define(false).(*VarDefAST))
 			if parser.Consumer.Expect(RIGHT_PAREN){
@@ -204,9 +204,10 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 		def.Assignment = assignment
 		def.Type = assignmentType
 	}
+	// add the identifier to the current symbol table
+	parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
 	if expectSemiColon {
-		// add the identifier to the current symbol table
-		parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
+		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
 	}
 	return def
 }
@@ -278,6 +279,13 @@ func (parser *Parser) Call() AST{
 	if parser.InferType(callee).Type == TYPE_FN {
 		var args []AST
 		if parser.Consumer.Consume(LEFT_PAREN) != nil{
+			for !parser.Consumer.Expect(RIGHT_PAREN) {
+				args = append(args, parser.Expression())
+				if parser.Consumer.Expect(RIGHT_PAREN){
+					break
+				}
+				parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between arguments")
+			}
 			parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 		}
 		return &CallAST{
@@ -344,6 +352,21 @@ func (parser *Parser) SingleVal() AST{
 				Any:    nil,
 			},
 		}
+	}else if t:=parser.Consumer.Consume(BOOL);t!=nil{
+		return &LiteralAST{
+			Type: TavType{
+				Type:   TYPE_BOOL,
+				IsPtr:  false,
+				PtrVal: nil,
+			},
+			Value: TavValue{
+				Int:    0,
+				Float:  0,
+				String: "",
+				Bool:   t.Value.(bool),
+				Any:    nil,
+			},
+		}
 	}else if parser.Consumer.Consume(LEFT_PAREN) != nil{ // group expression e.g. (1+2)
 		expression := parser.Expression()
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
@@ -368,6 +391,7 @@ func (parser *Parser) InferType(expression AST) TavType {
 		// TODO figure out how we infer the type of a function call
 		t := parser.InferType(e.Caller)
 		Log("infering type of CallAST...", t.RetType)
+		return *t.RetType
 	}
 	// this is unreachable
 	return TavType{}

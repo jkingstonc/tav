@@ -17,6 +17,14 @@ type Generator struct {
 func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 	llType := LLType(tavType)
 	switch llType {
+	case types.I1:
+		var val int64
+		if TavValue.Bool == true{
+			val = 1
+		}else{
+			val = 0
+		}
+		return constant.NewInt(types.I1, val)
 	case types.I8:
 		return constant.NewInt(types.I8, TavValue.Int)
 	case types.I16:

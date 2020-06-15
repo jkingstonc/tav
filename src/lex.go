@@ -257,7 +257,9 @@ func (lexer *Lexer) Identifier(r rune) bool {
 			if !lexer.CheckKeyword("64", TYPE, TYPE_F64) {
 				if !lexer.CheckKeyword("n", TYPE, TYPE_FN) {
 					if !lexer.CheckKeyword("or", FOR, nil) {
-						return false
+						if !lexer.CheckKeyword("alse", BOOL, false) {
+							return false
+						}
 					}
 				}
 			}
@@ -317,6 +319,11 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		return true
 	case 'p':
 		if !lexer.CheckKeyword("ack", PACK, nil) {
+			return false
+		}
+		return true
+	case 't':
+		if !lexer.CheckKeyword("rue", BOOL, false) {
 			return false
 		}
 		return true

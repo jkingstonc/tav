@@ -76,6 +76,11 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 
 func LLType(tavType TavType) types.Type{
 	switch tavType.Type {
+	case TYPE_BOOL:
+		if tavType.IsPtr {
+			return types.I1Ptr
+		}
+		return types.I1
 	case TYPE_I8:
 		if tavType.IsPtr {
 			return types.I8Ptr
