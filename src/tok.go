@@ -36,57 +36,42 @@ const (
 	IDENTIFIER uint32 = 0x1F
 	ADDR       uint32 = 0x20 // @
 	TYPE       uint32 = 0x21
-	U8         uint32 = 0x21
-	I8         uint32 = 0x22
-	U16        uint32 = 0x23
-	I16        uint32 = 0x24
-	U32        uint32 = 0x25
-	I32        uint32 = 0x26
-	F32        uint32 = 0x27
-	U64        uint32 = 0x28
-	I64        uint32 = 0x29
-	F64        uint32 = 0x2A
-	BOOL       uint32 = 0x2B
-	STRING     uint32 = 0x2C
-	STRUCT     uint32 = 0x2D
-	FN         uint32 = 0x2E
-	ANY        uint32 = 0x2F
-	NULL       uint32 = 0x30
-
-	SLITERAL   uint32 = 0x31
-	NLITERAL   uint32 = 0x32
+	NULL       uint32 = 0x22
+	TRUE       uint32 = 0x23
+	FALSE      uint32 = 0x24
+	SLITERAL   uint32 = 0x25
+	NLITERAL   uint32 = 0x26
 
 	// directives
-	NATIVE uint32 = 0x33
-	DEF    uint32 = 0x34
-	RUN    uint32 = 0x35
-	IFDEF  uint32 = 0x36
-	ENDIF  uint32 = 0x37
-	HIDE   uint32 = 0x38
-	EXPOSE uint32 = 0x39
-	PACK   uint32 = 0x3A
-	IMPORT uint32 = 0x3B
+	NATIVE uint32 = 0x27
+	DEF    uint32 = 0x28
+	RUN    uint32 = 0x29
+	IFDEF  uint32 = 0x2A
+	ENDIF  uint32 = 0x2B
+	HIDE   uint32 = 0x2C
+	EXPOSE uint32 = 0x2D
+	PACK   uint32 = 0x2E
+	IMPORT uint32 = 0x2F
 
-	IF       uint32 = 0x3C
-	ELIF     uint32 = 0x3D
-	ELSE     uint32 = 0x3E
-	FOR      uint32 = 0x3F
-	SWITCH   uint32 = 0x40
-	CASE     uint32 = 0x41
-	BREAK    uint32 = 0x42
-	CONTINUE uint32 = 0x43
-	RETURN   uint32 = 0x44
-	AND      uint32 = 0x45
-	OR       uint32 = 0x46
-	SLEFT    uint32 = 0x47
-	SRIGHT   uint32 = 0x48
+	IF       uint32 = 0x30
+	ELIF     uint32 = 0x31
+	ELSE     uint32 = 0x32
+	FOR      uint32 = 0x33
+	SWITCH   uint32 = 0x34
+	CASE     uint32 = 0x35
+	BREAK    uint32 = 0x36
+	CONTINUE uint32 = 0x37
+	RETURN   uint32 = 0x38
+	AND      uint32 = 0x39
+	OR       uint32 = 0x3A
+	SLEFT    uint32 = 0x3B
+	SRIGHT   uint32 = 0x3C
 )
 
 var (
 	TokStrings = [...]string{"", "{", "}", "[", "]", "(", ")", ",", ".", ";", ":", "?", "*", "!", "?",
 		"&", "|", "~", "+", "-", "/", "=", ":=", "==", "!=", "<", ">", "<=", ">=", "..", "...", "identifier", "@", "type",
-		"u8", "i8", "u16", "i16", "u32", "i32", "f32", "u64", "i64", "f64", "bool", "string", "struct", "fn",
-		"any", "sliteral", "nliteral", "null", "native","def", "run", "ifdef", "endif", "hide", "expose", "pack",
+		"null","true","false", "sliteral", "nliteral", "native","def", "run", "ifdef", "endif", "hide", "expose", "pack",
 		"import", "if", "elif", "else", "for", "switch", "case", "break", "continue", "return", "<<", ">>"}
 )
 

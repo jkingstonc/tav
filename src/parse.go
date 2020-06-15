@@ -475,7 +475,7 @@ func (parser *Parser) SingleVal() AST{
 				Any:    nil,
 			},
 		}
-	}else if t:=parser.Consumer.Consume(BOOL);t!=nil{
+	}else if t:=parser.Consumer.Consume(TRUE);t!=nil{
 		return &LiteralAST{
 			Type: TavType{
 				Type:   TYPE_BOOL,
@@ -486,7 +486,22 @@ func (parser *Parser) SingleVal() AST{
 				Int:    0,
 				Float:  0,
 				String: "",
-				Bool:   t.Value.(bool),
+				Bool:   true,
+				Any:    nil,
+			},
+		}
+	}else if t:=parser.Consumer.Consume(FALSE);t!=nil{
+		return &LiteralAST{
+			Type: TavType{
+				Type:   TYPE_BOOL,
+				IsPtr:  false,
+				PtrVal: nil,
+			},
+			Value: TavValue{
+				Int:    0,
+				Float:  0,
+				String: "",
+				Bool:   false,
 				Any:    nil,
 			},
 		}

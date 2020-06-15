@@ -167,7 +167,8 @@ func (generator *Generator) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) int
 }
 
 func (generator *Generator) VisitCallAST(CallAST *CallAST) interface{} {
-	return nil
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	return b.NewCall(CallAST.Visit(generator).(value.Value))
 }
 
 func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface{} {

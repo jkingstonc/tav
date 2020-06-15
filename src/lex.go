@@ -237,7 +237,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 			if !lexer.CheckKeyword("16", TYPE, TYPE_U16) {
 				if !lexer.CheckKeyword("32", TYPE, TYPE_U32) {
 					if !lexer.CheckKeyword("64", TYPE, TYPE_U64) {
-						return false
+						break
 					}
 				}
 			}
@@ -249,7 +249,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 				if !lexer.CheckKeyword("32", TYPE, TYPE_I32) {
 					if !lexer.CheckKeyword("64", TYPE, TYPE_I64) {
 						if !lexer.CheckKeyword("f", IF, nil) {
-							return false
+							break
 						}
 					}
 				}
@@ -261,8 +261,8 @@ func (lexer *Lexer) Identifier(r rune) bool {
 			if !lexer.CheckKeyword("64", TYPE, TYPE_F64) {
 				if !lexer.CheckKeyword("n", TYPE, TYPE_FN) {
 					if !lexer.CheckKeyword("or", FOR, nil) {
-						if !lexer.CheckKeyword("alse", BOOL, false) {
-							return false
+						if !lexer.CheckKeyword("alse", FALSE, false) {
+							break
 						}
 					}
 				}
@@ -272,7 +272,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 	case 'b':
 		if !lexer.CheckKeyword("ool", TYPE, TYPE_BOOL) {
 			if !lexer.CheckKeyword("reak", BREAK, nil) {
-				return false
+				break
 			}
 		}
 		return true
@@ -280,7 +280,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		if !lexer.CheckKeyword("tring", TYPE, TYPE_STRING) {
 			if !lexer.CheckKeyword("truct", TYPE, TYPE_STRUCT) {
 				if !lexer.CheckKeyword("witch", SWITCH, nil) {
-					return false
+					break
 				}
 			}
 		}
@@ -288,47 +288,47 @@ func (lexer *Lexer) Identifier(r rune) bool {
 	case 'a':
 		if !lexer.CheckKeyword("ny", TYPE, TYPE_ANY) {
 			if !lexer.CheckKeyword("nd", AND, nil) {
-				return false
+				break
 			}
 		}
 		return true
 	case 'n':
 		if !lexer.CheckKeyword("ull", NULL, nil) {
-			return false
+			break
 		}
 		return true
 	case 'r':
 		if !lexer.CheckKeyword("eturn", RETURN, nil) {
-			return false
+			break
 		}
 		return true
 	case 'e':
 		if !lexer.CheckKeyword("lif", ELIF, nil) {
 			if !lexer.CheckKeyword("lse", ELSE, nil) {
-				return false
+				break
 			}
 		}
 		return true
 	case 'c':
 		if !lexer.CheckKeyword("ase", CASE, nil) {
 			if !lexer.CheckKeyword("ontinue", CONTINUE, nil) {
-				return false
+				break
 			}
 		}
 		return true
 	case 'o':
 		if !lexer.CheckKeyword("r", OR, nil) {
-			return false
+			break
 		}
 		return true
 	case 'p':
 		if !lexer.CheckKeyword("ack", PACK, nil) {
-			return false
+			break
 		}
 		return true
 	case 't':
-		if !lexer.CheckKeyword("rue", BOOL, false) {
-			return false
+		if !lexer.CheckKeyword("rue", TRUE, false) {
+			break
 		}
 		return true
 	}
