@@ -118,6 +118,7 @@ func (parser *Parser) ParseStmtBlock() []AST {
 
 // parse a struct
 func (parser *Parser) Struct(identifier *Token) AST {
+	parser.SymTable = parser.SymTable.NewScope()
 	// add the identifier to the current symbol table
 	parser.SymTable.Add(identifier.Value.(string), TavType{
 		Type:   TYPE_STRUCT,
@@ -132,6 +133,8 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
+
+	parser.SymTable = parser.SymTable.PopScope()
 	return s
 }
 
@@ -163,16 +166,18 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 	if parser.Consumer.Expect(LEFT_CURLY) {
 		statements := parser.ParseStmtBlock()
 		f.Body = statements
+		// TODO Fix this, the problem is we pop out of the scope of the function, so the local variable we are wanting to check doesn't exist
 		// check that the return type is valid
-		for _, stmt := range statements {
-			switch stmt.(type){
-			case *ReturnAST:
-				if parser.InferType(stmt) != f.RetType {
-					Log(parser.InferType(stmt))
-					parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_RETURN_TYPE, "return type doesn't match function")
-				}
-			}
-		}
+		//for _, stmt := range statements {
+		//	switch stmt.(type){
+		//	case *ReturnAST:
+		//		if parser.InferType(stmt) != f.RetType {
+		//			Log(parser.InferType(stmt))
+		//			Log()
+		//			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_RETURN_TYPE, "return type doesn't match function")
+		//		}
+		//	}
+		//}
 	} else {
 		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after fn decleration")
 	}
@@ -203,8 +208,13 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
 				// check if the assigned type was correct
-				if parser.InferType(def.Assignment) != def.Type {
-					parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_TYPE, "types do not match")
+				if t :=parser.InferType(def.Assignment); t != def.Type {
+					// check if we can do a cast
+					if (def.Type.Type == TYPE_I8 || def.Type.Type == TYPE_I16 ||def.Type.Type == TYPE_I32 || def.Type.Type == TYPE_I64) && (t.Type == TYPE_I8 || t.Type == TYPE_I16 ||t.Type == TYPE_I32 || t.Type == TYPE_I64) {
+
+					}else{
+						parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_TYPE, "types do not match")
+					}
 				}
 			}
 		}
@@ -497,6 +507,7 @@ func (parser *Parser) InferType(expression AST) TavType {
 		if t != nil{
 			return t.Type
 		}
+		Log(":(",parser.SymTable.Symbols[0])
 		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_IDENTIFIER, "identifier doesn't exist")
 	case *LiteralAST:			// get the value of the literal
 		return e.Type

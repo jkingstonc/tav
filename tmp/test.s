@@ -13,8 +13,18 @@
 	.globl	main                    # -- Begin function main
 	.p2align	4, 0x90
 main:                                   # @main
+.seh_proc main
 # %bb.0:
-	movl	$1, %eax
+	pushq	%rax
+	.seh_stackalloc 8
+	.seh_endprologue
+	movl	$123, 4(%rsp)
+	movl	$123, (%rsp)
+	movl	$123, %eax
+	popq	%rcx
 	retq
+	.seh_handlerdata
+	.text
+	.seh_endproc
                                         # -- End function
 

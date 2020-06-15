@@ -12,6 +12,7 @@ type Generator struct {
 	Root         *RootAST
 	Module       *ir.Module
 	CurrentBlock []*ir.Block
+	SymTable     *SymTable
 }
 
 func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
@@ -81,6 +82,9 @@ func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
 }
 
 func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
+
+	generator.SymTable = generator.SymTable.NewScope()
+
 	f := generator.Module.NewFunc(FnAST.Identifier.Value.(string), LLType(FnAST.RetType))
 	b := f.NewBlock("")
 	generator.CurrentBlock = append(generator.CurrentBlock, b) // push the block to the stack
@@ -88,10 +92,28 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 		stmt.Visit(generator)
 	}
 	generator.CurrentBlock = generator.CurrentBlock[:len(generator.CurrentBlock)-1] // pop the block from the stack
+
+	generator.SymTable = generator.SymTable.PopScope()
+
 	return nil
 }
 
 func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
+	// implicit conversion to value.Value
+	// TODO stronger checking that this is valid
+	//assignment := VarDefAST.Assignment.Visit(generator).(value.Value)
+	//b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	//alloc := b.NewAlloca(LLType(VarDefAST.Type))
+	//alloc.SetName(VarDefAST.Identifier.Value.(string))
+	//b.NewStore(assignment, alloc)
+	////b.NewLoad(types.I64, constant.NewInt(types.I64, 9999))
+
+	assignment := VarDefAST.Assignment.Visit(generator).(value.Value)
+
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	v := b.NewAlloca(LLType(VarDefAST.Type))
+	b.NewStore(assignment, v)
+	generator.SymTable.Add(VarDefAST.Identifier.Value.(string), VarDefAST.Type, 0, v)
 	return nil
 }
 
@@ -116,7 +138,20 @@ func (generator *Generator) VisitListAST(ListAST *ListAST) interface{} {
 }
 
 func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface{} {
-	return nil
+	//b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	//// loop over each instruction to get the variable
+	//for _, inst := range b.Insts{
+	//	switch t:= inst.(type){
+	//	case *ir.InstAlloca:
+	//		if t.LocalName == VariableAST.Identifier.Value.(string){
+	//			return t
+	//		}
+	//	}
+	//}
+	variable := generator.SymTable.Get(VariableAST.Identifier.Value.(string))
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	val := b.NewLoad(LLType(variable.Type), variable.Value.(value.Value))
+	return val
 }
 
 func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
@@ -152,6 +187,7 @@ func Generate(compiler *Compiler, RootAST *RootAST) *ir.Module {
 	generator := &Generator{
 		Root:   RootAST,
 		Module: module,
+		SymTable: NewSymTable(nil),
 	}
 	result := generator.Run()
 	return result
