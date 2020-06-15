@@ -44,7 +44,7 @@ func (parser *Parser) Run() *RootAST {
 		// any top level expression is an identifier
 		switch t.Type {
 		case IDENTIFIER:
-			Root.Statements = append(Root.Statements, parser.Define())
+			Root.Statements = append(Root.Statements, parser.Define(true))
 		default:
 			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "unexpected token")
 		}
@@ -58,7 +58,7 @@ func (parser *Parser) Prelim() AST {
 
 func (parser *Parser) Statement() AST {
 	if parser.Consumer.Expect(IDENTIFIER){
-		return parser.Define()
+		return parser.Define(true)
 	} else if parser.Consumer.Consume(RETURN) != nil {
 		return parser.Return()
 	} else if parser.Consumer.Consume(BREAK) != nil {
@@ -127,7 +127,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
 
 	for !parser.Consumer.Expect(RIGHT_CURLY) {
-		s.Fields = append(s.Fields, parser.Define().(*VarDefAST))
+		s.Fields = append(s.Fields, parser.Define(true).(*VarDefAST))
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
@@ -135,7 +135,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 }
 
 // parse a function
-func (parser *Parser) Fun(identifier *Token) AST {	// add the identifier to the current symbol table
+func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the current symbol table
 	f := &FnAST{Identifier: identifier, RetType: *parser.ParseType()}
 
 	// we should probably instead use the return type???
@@ -147,9 +147,16 @@ func (parser *Parser) Fun(identifier *Token) AST {	// add the identifier to the 
 	},  0, f)
 
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
-
+		var params []*VarDefAST
 		// process the arguments
-
+		for true {
+			// each paramater is essentially a variable decleration
+			params = append(params, parser.Define(false).(*VarDefAST))
+			if parser.Consumer.Expect(RIGHT_PAREN){
+				break
+			}
+			parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between paramaters")
+		}
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 	}
 	if parser.Consumer.Expect(LEFT_CURLY) {
@@ -163,7 +170,7 @@ func (parser *Parser) Fun(identifier *Token) AST {	// add the identifier to the 
 
 // parse a variable definition (this only includes the identifier and type e.g. X : i32;, and assigning to
 // a definition e.g. X : i32 = 1;)
-func (parser *Parser) Define() AST {
+func (parser *Parser) Define(expectSemiColon bool) AST {
 	identifier := parser.Consumer.Consume(IDENTIFIER)
 
 	def := &VarDefAST{
@@ -180,7 +187,7 @@ func (parser *Parser) Define() AST {
 		case TYPE_STRUCT:
 			return parser.Struct(identifier)
 		case TYPE_FN:
-			return parser.Fun(identifier)
+			return parser.Fn(identifier)
 		default:
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
@@ -197,9 +204,10 @@ func (parser *Parser) Define() AST {
 		def.Assignment = assignment
 		def.Type = assignmentType
 	}
-	parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after assignment")
-	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
+	if expectSemiColon {
+		// add the identifier to the current symbol table
+		parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
+	}
 	return def
 }
 
