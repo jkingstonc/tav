@@ -48,6 +48,10 @@ func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
 	return nil
 }
 
+func (generator *Generator) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
+	return nil
+}
+
 func (generator *Generator) VisitReturnAST(ReturnAST *ReturnAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	b.NewRet(ReturnAST.Value.Visit(generator).(value.Value))

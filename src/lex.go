@@ -98,12 +98,16 @@ func (lexer *Lexer) Run() []*Token {
 		case '<':
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(LESS_EQUAL, nil)
+			}else if lexer.Consumer.Consume('<'){
+				lexer.Tok(SLEFT, nil)
 			} else {
 				lexer.Tok(LESS_THAN, nil)
 			}
 		case '>':
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(GREAT_EQUAL, nil)
+			} else if lexer.Consumer.Consume('>'){
+				lexer.Tok(SRIGHT, nil)
 			} else {
 				lexer.Tok(GREAT_THAN, nil)
 			}

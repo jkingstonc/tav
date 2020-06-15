@@ -12,6 +12,8 @@ type Visitor interface {
 	VisitVarDefAST(VarDefAST *VarDefAST)  interface{}
 	VisitBlockAST(BlockAST *BlockAST)  interface{}
 	VisitExprSmtAST(ExprStmtAST *ExprStmtAST)  interface{}
+	VisitStructSetAST(StructSetAST *StructSetAST) interface{}
+	VisitVarSetAST(VarSetAST *VarSetAST) interface{}
 	// expressions
 	VisitAssignAST(AsssignAST *AsssignAST)  interface{}
 	VisitLiteralAST(LiteralAST *LiteralAST)  interface{}
@@ -22,7 +24,6 @@ type Visitor interface {
 	VisitConnectiveAST(ConnectiveAST *ConnectiveAST)  interface{}
 	VisitCallAST(CallAST *CallAST) interface{}
 	VisitStructGetAST(StructGet *StructGetAST) interface{}
-	VisitStructSetAST(StructSetAST *StructSetAST) interface{}
 	VisitGroupAST(GroupAST *GroupAST) interface{}
 }
 
@@ -51,6 +52,15 @@ type ForAST struct {}
 func (ForAST *ForAST) Visit(Visitor Visitor) interface{} {
 	return Visitor.VisitForAST(ForAST)
 }
+type VarSetAST struct {
+	Identifier *Token
+	Value      AST
+}
+
+func (VarSetAST *VarSetAST) Visit(Visitor Visitor) interface{}{
+	return Visitor.VisitVarSetAST(VarSetAST)
+}
+
 type IfAST struct {
 	IfCondition AST
 	IfBody      AST

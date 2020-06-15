@@ -78,6 +78,8 @@ const (
 	RETURN   uint32 = 0x44
 	AND      uint32 = 0x45
 	OR       uint32 = 0x46
+	SLEFT    uint32 = 0x47
+	SRIGHT   uint32 = 0x48
 )
 
 var (
@@ -85,7 +87,7 @@ var (
 		"&", "|", "~", "+", "-", "/", "=", ":=", "==", "!=", "<", ">", "<=", ">=", "..", "...", "identifier", "@", "type",
 		"u8", "i8", "u16", "i16", "u32", "i32", "f32", "u64", "i64", "f64", "bool", "string", "struct", "fn",
 		"any", "sliteral", "nliteral", "null", "native","def", "run", "ifdef", "endif", "hide", "expose", "pack",
-		"import", "if", "elif", "else", "for", "switch", "case", "break", "continue", "return"}
+		"import", "if", "elif", "else", "for", "switch", "case", "break", "continue", "return", "<<", ">>"}
 )
 
 type Token struct {
