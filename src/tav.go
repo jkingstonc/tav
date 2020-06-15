@@ -40,6 +40,7 @@ type TavType struct {
 	Type    uint32
 	IsPtr   bool
 	PtrVal  *TavType
+	RetType *TavType // used for function calls
 }
 
 type Compiler struct {
@@ -74,7 +75,6 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 }
 
 func LLType(tavType TavType) types.Type{
-	Log(tavType)
 	switch tavType.Type {
 	case TYPE_I8:
 		if tavType.IsPtr {

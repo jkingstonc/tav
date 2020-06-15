@@ -1,15 +1,10 @@
 package src
 
 import (
-	"io/ioutil"
-	"os/exec"
-	"time"
-
-	"github.com/llir/llvm/ir/constant"
-	"github.com/llir/llvm/ir/value"
-
 	"github.com/llir/llvm/ir"
+	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
+	"github.com/llir/llvm/ir/value"
 )
 
 // implements visitor
@@ -140,38 +135,17 @@ func (generator *Generator) VisitGroupAST(GroupAST *GroupAST) interface{} {
 	return nil
 }
 
-func Generate(compiler *Compiler, RootAST *RootAST) uint8 {
-	start := time.Now()
-
-	// create a new LLVM module
+func Generate(compiler *Compiler, RootAST *RootAST) *ir.Module {
 	module := ir.NewModule()
 	generator := &Generator{
 		Root:   RootAST,
 		Module: module,
 	}
-
 	result := generator.Run()
-	Log(generator.Module.String())
-
-	ioutil.WriteFile("tmp/test.ll", []byte(generator.Module.String()), 0644)
-	c := exec.Command("llc", "tmp/test.ll")
-	err := c.Run()
-	Log(err)
-	c = exec.Command("gcc", "-c", "tmp/test.s", "-o", "tmp/test.o")
-	err = c.Run()
-	Log(err)
-	c = exec.Command("gcc", "tmp/test.o", "-o", "tmp/test")
-	err = c.Run()
-	Log(err)
-
-	end := time.Since(start)
-	Log("back end took ", end.Seconds(), "seconds")
 	return result
 }
 
-func (generator *Generator) Run() uint8 {
-
+func (generator *Generator) Run() *ir.Module {
 	generator.Root.Visit(generator)
-
-	return SUCCESS_COMP
+	return generator.Module
 }

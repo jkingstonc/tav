@@ -20,9 +20,7 @@ func main() {
 	if err == nil{
 		program := string(bytes)
 		if args[0] == "build" {
-			src.AheadCompile("test.tv", &program)
-		} else if args[0] == "run" {
-			src.JITCompile("test.tv", &program)
+			src.BuildExe(src.AheadCompile("test.tv", &program))
 		}
 	}else{
 		src.Log("couldn't open test.tv")

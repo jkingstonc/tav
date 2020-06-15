@@ -76,6 +76,9 @@ func (symTable *SymTable) Get(identifier string) *Symbol {
 			return sym
 		}
 	}
+	if symTable.Parent != nil {
+		return symTable.Parent.Get(identifier)
+	}
 	return nil
 }
 

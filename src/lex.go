@@ -2,7 +2,6 @@ package src
 
 import (
 	"strings"
-	"time"
 )
 
 const (
@@ -18,8 +17,6 @@ type Lexer struct {
 }
 
 func Lex(compiler *Compiler) []*Token {
-	start := time.Now()
-
 	reporter := NewReporter(compiler.FileName, compiler.Source)
 	consumer := NewLexConsumer(compiler.Source, reporter)
 
@@ -30,8 +27,6 @@ func Lex(compiler *Compiler) []*Token {
 	}
 
 	result := lexer.Run()
-	end := time.Since(start)
-	Log("front end took ", end.Seconds(), "seconds")
 	return result
 }
 
@@ -200,12 +195,12 @@ func (lexer *Lexer) StringLiteral(r rune){
 	s := strings.Builder{}
 	for !lexer.Consumer.End() && lexer.Consumer.Peek() != r{
 		s.WriteRune(lexer.Consumer.Advance())
+		if lexer.Consumer.End(){
+			lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_STRING_ESCAPED, "string must be closed with ' or \"")
+		}
 	}
-	if lexer.Consumer.End(){
-		lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_STRING_ESCAPED, "string must be closed with ' or \"")
-	}else{
-		lexer.Tok(SLITERAL, s.String())
-	}
+	lexer.Consumer.Consume(r)
+	lexer.Tok(SLITERAL, s.String())
 }
 
 func (lexer *Lexer) NumberLiteral(r rune) bool{

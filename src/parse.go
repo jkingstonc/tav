@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	ERR_UNEXPECTED_TOKEN = 0x0
+	ERR_UNEXPECTED_TOKEN   = 0x0
+	ERR_INVALID_TYPE 	   = 0x1
+	ERR_INVALID_IDENTIFIER = 0x2
 )
 
 // buffer the current active directives so we can process the rest of the tokens
@@ -55,7 +57,9 @@ func (parser *Parser) Prelim() AST {
 }
 
 func (parser *Parser) Statement() AST {
-	if parser.Consumer.Consume(RETURN) != nil {
+	if parser.Consumer.Expect(IDENTIFIER){
+		return parser.Define()
+	} else if parser.Consumer.Consume(RETURN) != nil {
 		return parser.Return()
 	} else if parser.Consumer.Consume(BREAK) != nil {
 		return parser.Break()
@@ -102,7 +106,7 @@ func (parser *Parser) ParseStmtBlock() []AST {
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' at start of statement block")
 	var statements []AST
 	for !parser.Consumer.Expect(RIGHT_CURLY) && !parser.Consumer.End() {
-		statements = append(statements, parser.Prelim())
+		statements = append(statements, parser.Statement())
 	}
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '}' at end of statement block")
 
@@ -113,6 +117,12 @@ func (parser *Parser) ParseStmtBlock() []AST {
 
 // parse a struct
 func (parser *Parser) Struct(identifier *Token) AST {
+	// add the identifier to the current symbol table
+	parser.SymTable.Add(identifier.Value.(string), TavType{
+		Type:   TYPE_STRUCT,
+		IsPtr:  false,
+		PtrVal: nil,
+	}, 0, nil)
 	s := &StructAST{Identifier: identifier}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
 
@@ -125,8 +135,16 @@ func (parser *Parser) Struct(identifier *Token) AST {
 }
 
 // parse a function
-func (parser *Parser) Fun(identifier *Token) AST {
+func (parser *Parser) Fun(identifier *Token) AST {	// add the identifier to the current symbol table
 	f := &FnAST{Identifier: identifier, RetType: *parser.ParseType()}
+
+	// we should probably instead use the return type???
+	parser.SymTable.Add(identifier.Value.(string), TavType{
+		Type:   TYPE_FN,
+		IsPtr:  false,
+		PtrVal: nil,
+		RetType: &f.RetType,
+	},  0, f)
 
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 
@@ -157,8 +175,6 @@ func (parser *Parser) Define() AST {
 	if parser.Consumer.Consume(COLON) != nil {
 		// check if we have a pointer
 		def.Type = *parser.ParseType()
-		// add the identifier to the current symbol table
-		parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
 		// if the definition is of a struct or function, parse the body
 		switch def.Type.Type {
 		case TYPE_STRUCT:
@@ -168,6 +184,10 @@ func (parser *Parser) Define() AST {
 		default:
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
+				// check if the assigned type was correct
+				if parser.InferType(def.Assignment) != def.Type {
+					parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_TYPE, "invalid type")
+				}
 			}
 		}
 	} else {
@@ -178,6 +198,8 @@ func (parser *Parser) Define() AST {
 		def.Type = assignmentType
 	}
 	parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after assignment")
+	// add the identifier to the current symbol table
+	parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
 	return def
 }
 
@@ -188,26 +210,14 @@ func (parser *Parser) QuickAssign() (AST, TavType) {
 	expression := parser.Expression()
 	// then infer the type of the expression
 	exprType := parser.InferType(expression)
-	Log("quick assign type", exprType)
 	return expression, exprType
 }
 
+// lowest precidence expression
 func (parser *Parser) Expression() AST {
-
 	return parser.Assignment()
-
-	//parser.Consumer.Advance()
-	//return &LiteralAST{
-	//	Type:  TavType{
-	//		Type:   TYPE_I32,
-	//		IsPtr:  false,
-	//		PtrVal: nil,
-	//	},
-	//	Value: TavValue{Int: 64},
-	//}
 }
 
-// lowest precidence expression
 func (parser *Parser) Assignment() AST{
 	higherPrecedence := parser.ConnectiveOr()
 	return higherPrecedence
@@ -254,7 +264,21 @@ func (parser *Parser) Unary() AST{
 }
 
 func (parser *Parser) Call() AST{
-	return parser.SingleVal()
+	callee := parser.SingleVal()
+	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
+	// we need some way of check
+	if parser.InferType(callee).Type == TYPE_FN {
+		var args []AST
+		if parser.Consumer.Consume(LEFT_PAREN) != nil{
+			parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
+		}
+		return &CallAST{
+			Caller: callee,
+			Args:   args,
+		}
+	}
+
+	return callee
 }
 
 func (parser *Parser) SingleVal() AST{
@@ -297,6 +321,25 @@ func (parser *Parser) SingleVal() AST{
 				},
 			}
 		}
+	}else if t:=parser.Consumer.Consume(SLITERAL);t!=nil{
+		return &LiteralAST{
+			Type: TavType{
+				Type:   TYPE_STRING,
+				IsPtr:  false,
+				PtrVal: nil,
+			},
+			Value: TavValue{
+				Int:    0,
+				Float:  0,
+				String: t.Value.(string),
+				Bool:   false,
+				Any:    nil,
+			},
+		}
+	}else if parser.Consumer.Consume(LEFT_PAREN) != nil{ // group expression e.g. (1+2)
+		expression := parser.Expression()
+		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
+		return &GroupAST{Group: expression}
 	}
 	return nil
 }
@@ -306,9 +349,17 @@ func (parser *Parser) SingleVal() AST{
 func (parser *Parser) InferType(expression AST) TavType {
 	switch e := expression.(type){
 	case *VariableAST:			// get the type of the variable in the symbol table
-		return parser.SymTable.Get(e.Identifier.Value.(string)).Type
+		t := parser.SymTable.Get(e.Identifier.Value.(string))
+		if t != nil{
+			return t.Type
+		}
+		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_IDENTIFIER, "identifier doesn't exist")
 	case *LiteralAST:			// get the value of the literal
 		return e.Type
+	case *CallAST:
+		// TODO figure out how we infer the type of a function call
+		t := parser.InferType(e.Caller)
+		Log("infering type of CallAST...", t.RetType)
 	}
 	// this is unreachable
 	return TavType{}
