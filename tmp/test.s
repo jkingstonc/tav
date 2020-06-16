@@ -13,19 +13,18 @@
 	.globl	main                    # -- Begin function main
 	.p2align	4, 0x90
 main:                                   # @main
+.seh_proc main
 # %bb.0:
-	movl	$1, %eax
+	pushq	%rax
+	.seh_stackalloc 8
+	.seh_endprologue
+	movl	$1, 4(%rsp)
+	movl	$2, (%rsp)
+	movl	$99, %eax
+	popq	%rcx
 	retq
-                                        # -- End function
-	.def	 test;
-	.scl	2;
-	.type	32;
-	.endef
-	.globl	test                    # -- Begin function test
-	.p2align	4, 0x90
-test:                                   # @test
-# %bb.0:
-	xorl	%eax, %eax
-	retq
+	.seh_handlerdata
+	.text
+	.seh_endproc
                                         # -- End function
 
