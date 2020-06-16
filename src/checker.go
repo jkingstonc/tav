@@ -72,8 +72,6 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 
 	checker.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
 		Type:    TYPE_FN,
-		IsPtr:   false,
-		PtrVal:  nil,
 		RetType: &FnAST.RetType,
 	}, 0, nil)
 

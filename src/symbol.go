@@ -44,8 +44,6 @@ func (symTable *SymTable) NewScope() *SymTable{
 	// add it to the current scope
 	symTable.Add("", TavType{
 		Type:   TYPE_SYM_TABLE,
-		IsPtr:  false,
-		PtrVal: nil,
 	},0, newTable)
 	// return the new table
 	return newTable

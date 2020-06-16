@@ -108,8 +108,6 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	generator.SymTable = generator.SymTable.PopScope()
 	generator.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
 		Type:    TYPE_FN,
-		IsPtr:   false,
-		PtrVal:  nil,
 		RetType: &FnAST.RetType,
 	}, 0, f)
 	return f
@@ -178,10 +176,9 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 	right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
 	switch UnaryAST.Operator.Type{
 	case ADDR:
-		b.NewIntToPtr(right.(value.Value), types.I32)
+		return b.NewIntToPtr(right.(value.Value), types.I32Ptr)
 	case STAR:
-
-		b.NewPtrToInt(right.(value.Value), types.I32)
+		return b.NewPtrToInt(right.(value.Value), types.I32Ptr)
 	}
 	return nil
 }

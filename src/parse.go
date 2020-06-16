@@ -126,8 +126,6 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	// add the identifier to the current symbol table
 	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_STRUCT,
-		IsPtr:  false,
-		PtrVal: nil,
 	}, 0, nil)
 	s := &StructAST{Identifier: identifier}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
@@ -149,8 +147,6 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 
 	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_FN,
-		IsPtr:  false,
-		PtrVal: nil,
 		RetType: &f.RetType,
 	},  0, f)
 
@@ -441,8 +437,6 @@ func (parser *Parser) SingleVal() AST{
 			return &LiteralAST{
 				Type: TavType{
 					Type:   TYPE_F32,
-					IsPtr:  false,
-					PtrVal: nil,
 				},
 				Value: TavValue{
 					Int:    0,
@@ -458,8 +452,6 @@ func (parser *Parser) SingleVal() AST{
 			return &LiteralAST{
 				Type: TavType{
 					Type:   TYPE_I32,
-					IsPtr:  false,
-					PtrVal: nil,
 				},
 				Value: TavValue{
 					Int:    value,
@@ -474,8 +466,6 @@ func (parser *Parser) SingleVal() AST{
 		return &LiteralAST{
 			Type: TavType{
 				Type:   TYPE_STRING,
-				IsPtr:  false,
-				PtrVal: nil,
 			},
 			Value: TavValue{
 				Int:    0,
@@ -489,8 +479,6 @@ func (parser *Parser) SingleVal() AST{
 		return &LiteralAST{
 			Type: TavType{
 				Type:   TYPE_BOOL,
-				IsPtr:  false,
-				PtrVal: nil,
 			},
 			Value: TavValue{
 				Int:    0,
@@ -504,8 +492,6 @@ func (parser *Parser) SingleVal() AST{
 		return &LiteralAST{
 			Type: TavType{
 				Type:   TYPE_BOOL,
-				IsPtr:  false,
-				PtrVal: nil,
 			},
 			Value: TavValue{
 				Int:    0,
@@ -529,19 +515,17 @@ func (parser *Parser) SingleVal() AST{
 // TODO Support user types e.g. struct
 func (parser *Parser) ParseType() *TavType {
 	typ := &TavType{
-		Type:   0,
-		IsPtr:  false,
-		PtrVal: nil,
+		Type:   	 0,
+		Indirection: 0,
+		RetType: 	 nil,
 	}
 	// if it is a pointer, recursively get the pointer value
-	if parser.Consumer.Consume(STAR) != nil {
-		typ.IsPtr = true
-		typ.PtrVal = parser.ParseType()
-	} else {
-		if t := parser.Consumer.Consume(TYPE); t != nil {
-			// it isn't a pointer, so get the type
-			typ.Type = t.Value.(uint32)
-		}
+	for parser.Consumer.Consume(STAR) != nil {
+		typ.Indirection+=1
+	}
+	if t := parser.Consumer.Consume(TYPE); t != nil {
+		// it isn't a pointer, so get the type
+		typ.Type = t.Value.(uint32)
 	}
 	return typ
 }

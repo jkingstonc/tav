@@ -37,10 +37,9 @@ type TavValue struct {
 }
 
 type TavType struct {
-	Type    uint32
-	IsPtr   bool
-	PtrVal  *TavType
-	RetType *TavType // used for function calls
+	Type    	uint32
+	Indirection uint8
+	RetType 	*TavType // used for function calls
 }
 
 func (TavType TavType) IsInt() bool{
@@ -83,46 +82,39 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 }
 
 func ConvertType(tavType TavType) types.Type{
-	return LLType(tavType, tavType.IsPtr)
-}
-
-func LLType(tavType TavType, ptr bool) types.Type{
-	if tavType.IsPtr{
-		return LLType(*tavType.PtrVal, tavType.PtrVal.IsPtr)
-	}
 	switch tavType.Type {
 	case TYPE_BOOL:
-		if ptr {
+		if tavType.Indirection>0 {
 			return types.I1Ptr
 		}
 		return types.I1
 	case TYPE_I8:
-		if ptr {
+		if tavType.Indirection>0{
 			return types.I8Ptr
 		}
 		return types.I8
 	case TYPE_I16:
-		if ptr {
+		if tavType.Indirection>0{
 			return types.I16Ptr
 		}
 		return types.I16
 	case TYPE_I32:
-		if ptr {
+		if tavType.Indirection>0 {
 			return types.I32Ptr
 		}
 		return types.I32
 	case TYPE_I64:
-		if ptr {
+		if tavType.Indirection>0 {
 			return types.I64Ptr
 		}
 		return types.I64
 	case TYPE_F32:
-		if ptr {
+		if tavType.Indirection>0 {
 			// NOT SURE HOW THIS WORKS
 		}
 		return types.Float
 	case TYPE_F64:
-		if ptr {
+		if tavType.Indirection>0{
 			// NOT SURE HOW THIS WORKS
 		}
 		return types.Double
@@ -146,6 +138,15 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 		//Assert(t!=nil, "symbol doesn't exist in symbol table")
 		//return t.Type
 		break
+	case *UnaryAST:
+		switch e.Operator.Type {
+		case ADDR:
+			// here we need to cast the type to a pointer
+			t := InferType(e.Right, SymTable)
+			// increase the indirection count
+			t.Indirection += 1
+			return t
+		}
 	case *LiteralAST:
 		return e.Type
 	case *ReturnAST:
@@ -179,3 +180,9 @@ func JoinInfered(type1, type2 TavType) TavType {
 	Assert(false, "cant join infered types")
 	return type1
 }
+
+// Cast a tav type to another type
+func CastType(){
+}
+
+func CastValue(){}
