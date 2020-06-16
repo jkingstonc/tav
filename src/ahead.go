@@ -1,14 +1,15 @@
 package src
 
 import (
-	"github.com/llir/llvm/ir"
 	"time"
+
+	"github.com/llir/llvm/ir"
 )
 
 // compile to exe
-func AheadCompile(filename string, source *string) *ir.Module {
+func AheadCompile(File *File) *ir.Module {
 	start := time.Now()
-	compiler := &Compiler{FileName: filename, Source: source}
+	compiler := &Compiler{File: File}
 	tokens := Lex(compiler)
 	tokens = ProcessDirectives(compiler, tokens)
 	ast := Parse(compiler, tokens)

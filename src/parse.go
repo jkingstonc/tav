@@ -24,7 +24,7 @@ type Parser struct {
 }
 
 func Parse(compiler *Compiler, tokens []*Token) *RootAST {
-	reporter := NewReporter(compiler.FileName, compiler.Source)
+	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
 	consumer := NewParseConsumer(tokens, reporter, compiler)
 
 	parser := Parser{

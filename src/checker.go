@@ -1,27 +1,27 @@
 package src
 
 const (
-	ERR_REDECLARED = 0x0
+	ERR_REDECLARED          = 0x0
 	ERR_INVALID_RETURN_TYPE = 0x1
-	ERR_NO_VAR = 0x2
+	ERR_NO_VAR              = 0x2
 )
 
 // implements Visitor
 type Checker struct {
 	Compiler *Compiler
 	// used for scope checking
-	SymTable  *SymTable
+	SymTable *SymTable
 	Reporter *Reporter
-	Root *RootAST
+	Root     *RootAST
 }
 
-func Check (compiler *Compiler, RootAST *RootAST) *RootAST{
-	reporter := NewReporter(compiler.FileName, compiler.Source)
+func Check(compiler *Compiler, RootAST *RootAST) *RootAST {
+	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
 	checker := Checker{
 		Compiler: compiler,
 		SymTable: NewSymTable(nil),
 		Reporter: reporter,
-		Root: RootAST,
+		Root:     RootAST,
 	}
 	checker.Run()
 	return RootAST
@@ -40,7 +40,7 @@ func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
 
 func (checker *Checker) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
 	checker.Reporter.Position = VarSetAST.Identifier.Position
-	if InferType(VarSetAST.Value, checker.SymTable) != checker.SymTable.Get(VarSetAST.Identifier.Lexme()).Type{
+	if InferType(VarSetAST.Value, checker.SymTable) != checker.SymTable.Get(VarSetAST.Identifier.Lexme()).Type {
 		checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "cannot assign type to variable")
 	}
 	return nil
@@ -70,6 +70,9 @@ func (checker *Checker) VisitStructAST(StructAST *StructAST) interface{} {
 func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 	checker.Reporter.Position = FnAST.Identifier.Position
 
+	if checker.SymTable.Get(FnAST.Identifier.Lexme()) != nil {
+		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "function re-declared")
+	}
 	checker.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
 		Type:    TYPE_FN,
 		RetType: &FnAST.RetType,
@@ -77,16 +80,16 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 
 	checker.SymTable = checker.SymTable.NewScope()
 
-	for _, param := range FnAST.Params{
+	for _, param := range FnAST.Params {
 		param.Visit(checker)
 	}
 
-	for _, stmt := range FnAST.Body{
+	for _, stmt := range FnAST.Body {
 		stmt.Visit(checker)
-		switch s:=stmt.(type){
+		switch s := stmt.(type) {
 		case *ReturnAST:
 			// check if the return value is of the same type
-			if InferType(s.Value, checker.SymTable) != FnAST.RetType{
+			if InferType(s.Value, checker.SymTable) != FnAST.RetType {
 				checker.Reporter.Position = FnAST.Identifier.Position
 				checker.Compiler.Critical(checker.Reporter, ERR_INVALID_RETURN_TYPE, "return types do not match")
 			}
@@ -103,14 +106,14 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	checker.Reporter.Position = VarDefAST.Identifier.Position
 
 	// only check the local scope, otherwise we can redeclare global variables
-	if checker.SymTable.GetLocal(VarDefAST.Identifier.Lexme())!=nil{
+	if checker.SymTable.GetLocal(VarDefAST.Identifier.Lexme()) != nil {
 		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "variable re-declared")
 	}
 	// add the define to the symbol table
 	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, nil)
 	// check if the assigned type was correct
-	if VarDefAST.Assignment != nil{
-		if t :=InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
+	if VarDefAST.Assignment != nil {
+		if t := InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
 			checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
 		}
 	}
@@ -119,7 +122,7 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 
 func (checker *Checker) VisitBlockAST(BlockAST *BlockAST) interface{} {
 	checker.SymTable = checker.SymTable.NewScope()
-	for _, stmt := range BlockAST.Statements{
+	for _, stmt := range BlockAST.Statements {
 		stmt.Visit(checker)
 	}
 	checker.SymTable = checker.SymTable.PopScope()
@@ -141,7 +144,7 @@ func (checker *Checker) VisitListAST(ListAST *ListAST) interface{} {
 
 func (checker *Checker) VisitVariableAST(VariableAST *VariableAST) interface{} {
 	checker.Reporter.Position = VariableAST.Identifier.Position
-	if checker.SymTable.Get(VariableAST.Identifier.Lexme())==nil{
+	if checker.SymTable.Get(VariableAST.Identifier.Lexme()) == nil {
 		checker.Compiler.Critical(checker.Reporter, ERR_NO_VAR, "variable doesn't exist")
 	}
 	return nil
@@ -161,7 +164,7 @@ func (checker *Checker) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) interfa
 
 func (checker *Checker) VisitCallAST(CallAST *CallAST) interface{} {
 	CallAST.Caller.Visit(checker)
-	for _, arg := range CallAST.Args{
+	for _, arg := range CallAST.Args {
 		arg.Visit(checker)
 	}
 	return nil

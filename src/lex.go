@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	ERR_UNEXPECTED_CHAR 	   = 0x0
-	ERR_STRING_ESCAPED  	   = 0x1
+	ERR_UNEXPECTED_CHAR        = 0x0
+	ERR_STRING_ESCAPED         = 0x1
 	ERR_INVALID_NUMBER_LITERAL = 0x2
 )
 
@@ -17,8 +17,8 @@ type Lexer struct {
 }
 
 func Lex(compiler *Compiler) []*Token {
-	reporter := NewReporter(compiler.FileName, compiler.Source)
-	consumer := NewLexConsumer(compiler.Source, reporter)
+	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
+	consumer := NewLexConsumer(compiler.File.Source, reporter)
 
 	lexer := Lexer{
 		Compiler: compiler,
@@ -35,9 +35,9 @@ func (lexer *Lexer) Run() []*Token {
 		lexer.Consumer.SkipWhitespace()
 		r := lexer.Consumer.Advance()
 		switch r {
-		case '\n':  // newline
+		case '\n': // newline
 			lexer.Newline()
-		case '\r':	// carrige return
+		case '\r': // carrige return
 			lexer.Consumer.Reporter.Position.Indent = 1
 			// issue here is that the lexer then doesn't know there is a line here
 			break
@@ -71,9 +71,9 @@ func (lexer *Lexer) Run() []*Token {
 					lexer.Tok(RANGE, nil)
 				}
 			} else {
-				if IsNum(lexer.Consumer.Peek()){
+				if IsNum(lexer.Consumer.Peek()) {
 					lexer.NumberLiteral(r)
-				}else {
+				} else {
 					lexer.Tok(PERIOD, nil)
 				}
 			}
@@ -98,7 +98,7 @@ func (lexer *Lexer) Run() []*Token {
 		case '<':
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(LESS_EQUAL, nil)
-			}else if lexer.Consumer.Consume('<'){
+			} else if lexer.Consumer.Consume('<') {
 				lexer.Tok(SLEFT, nil)
 			} else {
 				lexer.Tok(LESS_THAN, nil)
@@ -106,7 +106,7 @@ func (lexer *Lexer) Run() []*Token {
 		case '>':
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(GREAT_EQUAL, nil)
-			} else if lexer.Consumer.Consume('>'){
+			} else if lexer.Consumer.Consume('>') {
 				lexer.Tok(SRIGHT, nil)
 			} else {
 				lexer.Tok(GREAT_THAN, nil)
@@ -122,9 +122,9 @@ func (lexer *Lexer) Run() []*Token {
 		case '+':
 			lexer.Tok(PLUS, nil)
 		case '-':
-			if lexer.Consumer.Consume('>'){
+			if lexer.Consumer.Consume('>') {
 				lexer.Tok(DEREF, nil)
-			}else {
+			} else {
 				lexer.Tok(MINUS, nil)
 			}
 		case '=':
@@ -160,11 +160,11 @@ func (lexer *Lexer) Run() []*Token {
 				}
 			}
 		default:
-			if IsChar(r){
+			if IsChar(r) {
 				lexer.Identifier(r)
-			}else if IsNum(r){
+			} else if IsNum(r) {
 				lexer.NumberLiteral(r)
-			}else{
+			} else {
 				lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_UNEXPECTED_CHAR, "unexpected character")
 			}
 		}
@@ -184,9 +184,9 @@ func (lexer *Lexer) LineComment() {
 }
 
 func (lexer *Lexer) BlockComment() {
-	for !lexer.Consumer.End(){
-		if lexer.Consumer.Consume('*'){
-			if lexer.Consumer.Consume('/'){
+	for !lexer.Consumer.End() {
+		if lexer.Consumer.Consume('*') {
+			if lexer.Consumer.Consume('/') {
 				return
 			}
 		}
@@ -195,15 +195,15 @@ func (lexer *Lexer) BlockComment() {
 }
 
 func (lexer *Lexer) Tok(tok uint32, val interface{}) {
-	t := &Token{lexer.Consumer.Reporter.Position,tok, val}
+	t := &Token{lexer.Consumer.Reporter.Position, tok, val}
 	lexer.Tokens = append(lexer.Tokens, t)
 }
 
-func (lexer *Lexer) StringLiteral(r rune){
+func (lexer *Lexer) StringLiteral(r rune) {
 	s := strings.Builder{}
-	for !lexer.Consumer.End() && lexer.Consumer.Peek() != r{
+	for !lexer.Consumer.End() && lexer.Consumer.Peek() != r {
 		s.WriteRune(lexer.Consumer.Advance())
-		if lexer.Consumer.End(){
+		if lexer.Consumer.End() {
 			lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_STRING_ESCAPED, "string must be closed with ' or \"")
 		}
 	}
@@ -211,19 +211,19 @@ func (lexer *Lexer) StringLiteral(r rune){
 	lexer.Tok(SLITERAL, s.String())
 }
 
-func (lexer *Lexer) NumberLiteral(r rune) bool{
+func (lexer *Lexer) NumberLiteral(r rune) bool {
 	hadPeriod := false
 	s := strings.Builder{}
-	if r == '.'{
+	if r == '.' {
 		hadPeriod = true
 		s.WriteRune('0')
 	}
 	s.WriteRune(r)
-	for !lexer.Consumer.End() && (IsNum(lexer.Consumer.Peek()) || lexer.Consumer.Expect('.')){
+	for !lexer.Consumer.End() && (IsNum(lexer.Consumer.Peek()) || lexer.Consumer.Expect('.')) {
 		n := lexer.Consumer.Advance()
-		if n == '.' && hadPeriod == false{
+		if n == '.' && hadPeriod == false {
 			hadPeriod = true
-		}else if n == '.' && hadPeriod == true{
+		} else if n == '.' && hadPeriod == true {
 			lexer.Compiler.Critical(lexer.Consumer.Reporter, ERR_INVALID_NUMBER_LITERAL, "number cannot have more than 1 '.'")
 			return false
 		}
@@ -339,9 +339,11 @@ func (lexer *Lexer) Identifier(r rune) bool {
 
 	var identifier strings.Builder
 	identifier.WriteRune(r)
-	for !lexer.Consumer.End() && (IsChar(lexer.Consumer.Peek()) || IsNum(lexer.Consumer.Peek())) {
+	p := lexer.Consumer.Peek()
+	for !lexer.Consumer.End() && (IsChar(p) || IsNum(p) || p == '_') {
 		identifier.WriteRune(lexer.Consumer.Peek())
 		lexer.Consumer.Advance()
+		p = lexer.Consumer.Peek()
 	}
 	lexer.Tok(IDENTIFIER, identifier.String())
 	return true

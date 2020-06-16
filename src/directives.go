@@ -8,7 +8,7 @@ type Directives struct {
 }
 
 func ProcessDirectives(compiler *Compiler, tokens []*Token) []*Token {
-	reporter := NewReporter(compiler.FileName, compiler.Source)
+	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
 	consumer := NewParseConsumer(tokens, reporter, compiler)
 
 	directives := Directives{

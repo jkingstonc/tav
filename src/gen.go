@@ -178,7 +178,7 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 	case ADDR:
 		return b.NewIntToPtr(right.(value.Value), types.I32Ptr)
 	case STAR:
-		return b.NewPtrToInt(right.(value.Value), types.I32Ptr)
+		return b.NewLoad(types.I32, right.(value.Value))
 	}
 	return nil
 }
