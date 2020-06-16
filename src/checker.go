@@ -38,6 +38,10 @@ func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
 }
 
 func (checker *Checker) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
+	checker.Reporter.Position = VarSetAST.Identifier.Position
+	if InferType(VarSetAST.Value, checker.SymTable) != checker.SymTable.Get(VarSetAST.Identifier.Lexme()).Type{
+		checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "cannot assign type to variable")
+	}
 	return nil
 }
 
@@ -91,8 +95,10 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	// add the define to the symbol table
 	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, nil)
 	// check if the assigned type was correct
-	if t :=InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
-		checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
+	if VarDefAST.Assignment != nil{
+		if t :=InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
+			checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
+		}
 	}
 	return nil
 }
@@ -108,14 +114,6 @@ func (checker *Checker) VisitBlockAST(BlockAST *BlockAST) interface{} {
 
 func (checker *Checker) VisitExprSmtAST(ExprStmtAST *ExprStmtAST) interface{} {
 	ExprStmtAST.Visit(checker)
-	return nil
-}
-
-func (checker *Checker) VisitAssignAST(AsssignAST *AsssignAST) interface{} {
-	checker.Reporter.Position = AsssignAST.Identifier.Position
-	if InferType(AsssignAST.Value, checker.SymTable) != checker.SymTable.Get(AsssignAST.Identifier.Lexme()).Type{
-		checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "cannot assign type to variable")
-	}
 	return nil
 }
 

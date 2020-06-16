@@ -15,7 +15,6 @@ type Visitor interface {
 	VisitStructSetAST(StructSetAST *StructSetAST) interface{}
 	VisitVarSetAST(VarSetAST *VarSetAST) interface{}
 	// expressions
-	VisitAssignAST(AsssignAST *AsssignAST)  interface{}
 	VisitLiteralAST(LiteralAST *LiteralAST)  interface{}
 	VisitListAST(ListAST *ListAST)  interface{}
 	VisitVariableAST(VariableAST *VariableAST)  interface{}
@@ -112,14 +111,6 @@ func (ExprStmtAST *ExprStmtAST) Visit(Visitor Visitor)  interface{}{
 	return Visitor.VisitExprSmtAST(ExprStmtAST)
 }
 
-// expressions
-type AsssignAST struct { // assign to a non-member variable
-	Identifier *Token
-	Value      AST
-}
-func (AsssignAST *AsssignAST) Visit(Visitor Visitor) interface{} {
-	return Visitor.VisitAssignAST(AsssignAST)
-}
 type LiteralAST struct {
 	Type  TavType
 	Value TavValue

@@ -43,7 +43,7 @@ func (parser *Parser) Run() *RootAST {
 		// any top level expression is an identifier
 		switch t.Type {
 		case IDENTIFIER:
-			Root.Statements = append(Root.Statements, parser.Define(true))
+			Root.Statements = append(Root.Statements, parser.Define())
 		default:
 			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "unexpected token")
 		}
@@ -56,21 +56,28 @@ func (parser *Parser) Prelim() AST {
 }
 
 func (parser *Parser) Statement() AST {
-	if parser.Consumer.Expect(IDENTIFIER){
-		return parser.Define(true)
+	var ast AST
+	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON){
+		ast =  parser.Define()
+	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN){
+		ast =  parser.QuickAssign()
+	} else if parser.Consumer.Expect(IDENTIFIER){
+		ast =  parser.Assignment()
 	} else if parser.Consumer.Consume(RETURN) != nil {
-		return parser.Return()
+		ast = parser.Return()
 	} else if parser.Consumer.Consume(BREAK) != nil {
-		return parser.Break()
+		ast =  parser.Break()
 	} else if parser.Consumer.Consume(FOR) != nil {
-		return parser.For()
+		ast =  parser.For()
 	} else if parser.Consumer.Consume(IF) != nil {
-		return parser.If()
+		ast =  parser.If()
 	} else if parser.Consumer.Consume(LEFT_CURLY) != nil {
-		return &BlockAST{Statements: parser.ParseStmtBlock()}
+		ast =  &BlockAST{Statements: parser.ParseStmtBlock()}
 	} else {
-		return parser.ExpressionStmt()
+		ast = parser.ExpressionStmt()
 	}
+	parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' at end of statement")
+	return ast
 }
 
 func (parser *Parser) ExpressionStmt() AST {
@@ -79,7 +86,6 @@ func (parser *Parser) ExpressionStmt() AST {
 
 func (parser *Parser) Return() AST {
 	r := &ReturnAST{Value: parser.Expression()}
-	parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after 'return'")
 	return r
 }
 
@@ -127,7 +133,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
 
 	for !parser.Consumer.Expect(RIGHT_CURLY) {
-		s.Fields = append(s.Fields, parser.Define(true).(*VarDefAST))
+		s.Fields = append(s.Fields, parser.Define().(*VarDefAST))
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
@@ -152,7 +158,7 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 		// process the arguments
 		for !parser.Consumer.Expect(RIGHT_PAREN) {
 			// each paramater is essentially a variable decleration
-			params = append(params, parser.Define(false).(*VarDefAST))
+			params = append(params, parser.Define().(*VarDefAST))
 			if parser.Consumer.Expect(RIGHT_PAREN){
 				break
 			}
@@ -171,71 +177,51 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 
 // parse a variable definition (this only includes the identifier and type e.g. X : i32;, and assigning to
 // a definition e.g. X : i32 = 1;)
-func (parser *Parser) Define(expectSemiColon bool) AST {
+func (parser *Parser) Define() AST {
 	// explicit type define
-	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON) {
-		identifier := parser.Consumer.Consume(IDENTIFIER)
-		parser.Consumer.Consume(COLON)
-		def := &VarDefAST{
-			Identifier: identifier,
-			Type:       TavType{},
-			Assignment: nil,
+	identifier := parser.Consumer.Consume(IDENTIFIER)
+	parser.Consumer.Consume(COLON)
+	def := &VarDefAST{
+		Identifier: identifier,
+		Type:       TavType{},
+		Assignment: nil,
+	}
+	// check if we have a pointer
+	def.Type = *parser.ParseType()
+	// if the definition is of a struct or function, parse the body
+	switch def.Type.Type {
+	case TYPE_STRUCT:
+		return parser.Struct(identifier)
+	case TYPE_FN:
+		return parser.Fn(identifier)
+	default:
+		if parser.Consumer.Consume(ASSIGN) != nil {
+			def.Assignment = parser.Expression()
 		}
-		// check if we have a pointer
-		def.Type = *parser.ParseType()
-		// if the definition is of a struct or function, parse the body
-		switch def.Type.Type {
-		case TYPE_STRUCT:
-			return parser.Struct(identifier)
-		case TYPE_FN:
-			return parser.Fn(identifier)
-		default:
-			if parser.Consumer.Consume(ASSIGN) != nil {
-				def.Assignment = parser.Expression()
-			}
-			// add the identifier to the current symbol table
-			parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
-			if expectSemiColon {
-				parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
-			}
-			return def
-		}
-	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN){
-		identifier := parser.Consumer.Consume(IDENTIFIER)
-		parser.Consumer.Consume(QUICK_ASSIGN)
-		def := &VarDefAST{
-			Identifier: identifier,
-			Type:       TavType{},
-			Assignment: nil,
-		}
-		// we are doing a quick assign
-		assignment, assignmentType := parser.QuickAssign()
-		def.Assignment = assignment
-		def.Type = assignmentType
 		// add the identifier to the current symbol table
 		parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
-		if expectSemiColon {
-			parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
-		}
 		return def
-	}else{
-		// we are assigning to a variable
-		a:= parser.Assignment()
-		if expectSemiColon {
-			parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
-		}
-		return a
 	}
 }
 
 // FOR NOW, WE DON'T SUPPORT QUICK ASSIGNING STRUCTS OR FUNCTIONS
 // parse a variable quick assign (e.g. X := 1)
-func (parser *Parser) QuickAssign() (AST, TavType) {
+func (parser *Parser) QuickAssign() AST {
+	identifier := parser.Consumer.Consume(IDENTIFIER)
+	parser.Consumer.Consume(QUICK_ASSIGN)
+	def := &VarDefAST{
+		Identifier: identifier,
+		Type:       TavType{},
+		Assignment: nil,
+	}
 	// get the expression
-	expression := parser.Expression()
+	def.Assignment = parser.Expression()
 	// then infer the type of the expression
-	exprType := InferType(expression, parser.SymTable)
-	return expression, exprType
+	def.Type = InferType(def.Assignment, parser.SymTable)
+	// add the identifier to the current symbol table
+	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
+
+	return def
 }
 
 // lowest precidence expression

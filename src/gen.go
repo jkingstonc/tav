@@ -54,7 +54,6 @@ func (generator *Generator) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
 	variable := generator.SymTable.Get(VarSetAST.Identifier.Lexme()).Value
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	val := b.NewStore(VarSetAST.Value.Visit(generator).(value.Value), variable.(value.Value))
-	Log("visiting assign!")
 	return val
 }
 
@@ -65,6 +64,8 @@ func (generator *Generator) VisitReturnAST(ReturnAST *ReturnAST) interface{} {
 }
 
 func (generator *Generator) VisitBreakAST(BreakAST *BreakAST) interface{} {
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b.NewBr(b)
 	return nil
 }
 
@@ -133,10 +134,6 @@ func (generator *Generator) VisitBlockAST(BlockAST *BlockAST) interface{} {
 
 func (generator *Generator) VisitExprSmtAST(ExprStmtAST *ExprStmtAST) interface{} {
 	return nil
-}
-
-func (generator *Generator) VisitAssignAST(AsssignAST *AsssignAST) interface{} {	// first get the variable from the symbol table (its a value.Value)
-return nil
 }
 
 func (generator *Generator) VisitLiteralAST(LiteralAST *LiteralAST) interface{} {
