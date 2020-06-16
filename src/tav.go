@@ -137,11 +137,11 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 	case *LiteralAST:
 		return e.Type
 	case *ReturnAST:
-		return InferType(e.Value, nil)
+		return InferType(e.Value, SymTable)
 	case *BinaryAST:
-		return JoinInfered(InferType(e.Left, nil), InferType(e.Right, nil))
+		return JoinInfered(InferType(e.Left, SymTable), InferType(e.Right, SymTable))
 	case *CallAST:
-		t := InferType(e.Caller, nil)
+		t := InferType(e.Caller, SymTable)
 		return *t.RetType
 	}
 	// this is unreachable

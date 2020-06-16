@@ -245,6 +245,7 @@ func (parser *Parser) Assignment() AST{
 				Struct: ast.Struct,
 				Member: ast.Member,
 				Value:  assignValue,
+				Deref: ast.Deref,
 			}
 		}
 	}
@@ -396,6 +397,20 @@ func (parser *Parser) Call() AST{
 		return &CallAST{
 			Caller: callee,
 			Args:   args,
+		}
+	}else if parser.Consumer.Consume(PERIOD) != nil{
+		// struct member get
+		return &StructGetAST{
+			Struct: callee,
+			Member: parser.Consumer.ConsumeErr(IDENTIFIER, ERR_UNEXPECTED_TOKEN, "expected struct member"),
+			Deref : false,
+		}
+	}else if parser.Consumer.Consume(DEREF) != nil{
+		// struct member dereference
+		return &StructGetAST{
+			Struct: callee,
+			Member: parser.Consumer.ConsumeErr(IDENTIFIER, ERR_UNEXPECTED_TOKEN, "expected struct member"),
+			Deref : true,
 		}
 	}
 

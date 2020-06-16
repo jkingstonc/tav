@@ -122,7 +122,11 @@ func (lexer *Lexer) Run() []*Token {
 		case '+':
 			lexer.Tok(PLUS, nil)
 		case '-':
-			lexer.Tok(MINUS, nil)
+			if lexer.Consumer.Consume('>'){
+				lexer.Tok(DEREF, nil)
+			}else {
+				lexer.Tok(MINUS, nil)
+			}
 		case '=':
 			if lexer.Consumer.Consume('=') {
 				lexer.Tok(EQUALS, nil)

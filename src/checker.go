@@ -67,6 +67,14 @@ func (checker *Checker) VisitStructAST(StructAST *StructAST) interface{} {
 
 func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 	checker.Reporter.Position = FnAST.Identifier.Position
+
+	checker.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
+		Type:    TYPE_FN,
+		IsPtr:   false,
+		PtrVal:  nil,
+		RetType: &FnAST.RetType,
+	}, 0, nil)
+
 	checker.SymTable = checker.SymTable.NewScope()
 	for _, stmt := range FnAST.Body{
 		stmt.Visit(checker)
@@ -142,6 +150,7 @@ func (checker *Checker) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) interfa
 }
 
 func (checker *Checker) VisitCallAST(CallAST *CallAST) interface{} {
+
 	return nil
 }
 

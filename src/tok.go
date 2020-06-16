@@ -66,13 +66,14 @@ const (
 	OR       uint32 = 0x3A
 	SLEFT    uint32 = 0x3B
 	SRIGHT   uint32 = 0x3C
+	DEREF    uint32 = 0x3D
 )
 
 var (
 	TokStrings = [...]string{"", "{", "}", "[", "]", "(", ")", ",", ".", ";", ":", "?", "*", "!", "?",
 		"&", "|", "~", "+", "-", "/", "=", ":=", "==", "!=", "<", ">", "<=", ">=", "..", "...", "identifier", "@", "type",
 		"null","true","false", "sliteral", "nliteral", "native","def", "run", "ifdef", "endif", "hide", "expose", "pack",
-		"import", "if", "elif", "else", "for", "switch", "case", "break", "continue", "return", "<<", ">>"}
+		"import", "if", "elif", "else", "for", "switch", "case", "break", "continue", "return", "<<", ">>","->"}
 )
 
 type Token struct {

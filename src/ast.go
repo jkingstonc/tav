@@ -161,6 +161,7 @@ func (CallAST *CallAST) Visit(Visitor Visitor)  interface{}{
 type StructGetAST struct {
 	Struct AST
 	Member *Token
+	Deref  bool
 }
 func (StructGetAST *StructGetAST) Visit(Visitor Visitor) interface{} {
 	return Visitor.VisitStructGetAST(StructGetAST)
@@ -169,6 +170,7 @@ type StructSetAST struct {
 	Struct AST
 	Member *Token
 	Value  AST
+	Deref  bool
 }
 func (StructSetAST *StructSetAST) Visit(Visitor Visitor) interface{} {
 	return Visitor.VisitStructSetAST(StructSetAST)
