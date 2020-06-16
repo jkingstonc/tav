@@ -15,6 +15,18 @@ type Checker struct {
 	Root     *RootAST
 }
 
+func (Checker *Checker) PrintfProto() {
+	Checker.SymTable.Add("printf", TavType{
+		Type:        TYPE_I8,
+		Indirection: 1,
+		RetType:     &TavType{
+			Type:        TYPE_I32,
+			Indirection: 0,
+			RetType:     nil,
+		},
+	}, 0, nil)
+}
+
 func Check(compiler *Compiler, RootAST *RootAST) *RootAST {
 	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
 	checker := Checker{
@@ -32,6 +44,7 @@ func (checker *Checker) Run() {
 }
 
 func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
+	checker.PrintfProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(checker)
 	}
@@ -114,7 +127,9 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	// check if the assigned type was correct
 	if VarDefAST.Assignment != nil {
 		if t := InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
-			checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
+			if !CastValue(VarDefAST.Type, VarDefAST.Assignment){
+				checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
+			}
 		}
 	}
 	return nil

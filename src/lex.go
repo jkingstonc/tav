@@ -281,11 +281,9 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 's':
-		if !lexer.CheckKeyword("tring", TYPE, TYPE_STRING) {
-			if !lexer.CheckKeyword("truct", TYPE, TYPE_STRUCT) {
-				if !lexer.CheckKeyword("witch", SWITCH, nil) {
-					break
-				}
+		if !lexer.CheckKeyword("truct", TYPE, TYPE_STRUCT) {
+			if !lexer.CheckKeyword("witch", SWITCH, nil) {
+				break
 			}
 		}
 		return true

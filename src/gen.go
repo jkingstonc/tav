@@ -16,6 +16,21 @@ type Generator struct {
 	SymTable     *SymTable
 }
 
+func (Generator *Generator) PrintfProto() *ir.Func{
+
+	f:=Generator.Module.NewFunc("printf", types.I32, ir.NewParam("formatter", types.I8Ptr))
+	Generator.SymTable.Add("printf", TavType{
+		Type:    TYPE_FN,
+		RetType: &TavType{
+			Type:        TYPE_I32,
+			Indirection: 0,
+			RetType:     nil,
+		},
+	}, 0, f)
+
+	return f
+}
+
 func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 	llType := ConvertType(tavType)
 	switch llType {
@@ -44,6 +59,7 @@ func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 }
 
 func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
+	generator.PrintfProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(generator)
 	}
@@ -176,9 +192,9 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 	right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
 	switch UnaryAST.Operator.Type{
 	case ADDR:
-		return b.NewIntToPtr(right.(value.Value), types.I32Ptr)
+		return b.NewIntToPtr(right.(value.Value), types.I8Ptr)
 	case STAR:
-		return b.NewLoad(types.I32, right.(value.Value))
+		return b.NewLoad(types.I8, right.(value.Value))
 	}
 	return nil
 }

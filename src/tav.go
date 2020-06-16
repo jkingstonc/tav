@@ -22,11 +22,10 @@ const (
 	TYPE_I64       uint32 = 0x9
 	TYPE_F64       uint32 = 0xA
 	TYPE_BOOL      uint32 = 0xB
-	TYPE_STRING    uint32 = 0xC
-	TYPE_STRUCT    uint32 = 0xD
-	TYPE_FN        uint32 = 0xE
-	TYPE_ANY       uint32 = 0xF
-	TYPE_NULL      uint32 = 0x10
+	TYPE_STRUCT    uint32 = 0xC
+	TYPE_FN        uint32 = 0xD
+	TYPE_ANY       uint32 = 0xE
+	TYPE_NULL      uint32 = 0xF
 )
 
 type File struct {
@@ -38,7 +37,7 @@ type File struct {
 type TavValue struct {
 	Int    int64
 	Float  float64
-	String string
+	String []byte
 	Bool   bool
 	Any    interface{}
 }
@@ -191,8 +190,36 @@ func JoinInfered(type1, type2 TavType) TavType {
 	return type1
 }
 
-// Cast a tav type to another type
-func CastType() {
+
+// check if 2 types are able to be cast
+func Compatible(t1, t2 TavType) bool{
+	// TODO fix this so it accomodates strings as they are pointers
+	//// 2 types are immediately not compatible if they have different pointer indirections
+	//if t1.Indirection != t2.Indirection{
+	//	return false
+	//}
+	// check integers
+	if (t1.Type == TYPE_I8 || t1.Type == TYPE_I16 || t1.Type == TYPE_I32 || t1.Type == TYPE_I64) &&
+		(t2.Type == TYPE_I8 || t2.Type == TYPE_I16 || t2.Type == TYPE_I32 || t2.Type == TYPE_I64){
+		return true
+	// check floats
+	}else if (t1.Type == TYPE_F32 || t1.Type == TYPE_F64) && (t2.Type == TYPE_F32 || t2.Type == TYPE_F64) {
+		return true
+	}
+
+	return false
 }
 
-func CastValue() {}
+
+// cast an expression to a certian type
+// TODO actually check if the cast is valid, this is very hacky
+func CastValue(tavType TavType, expression AST) bool{
+	switch e:=expression.(type){
+	case *LiteralAST:
+		if Compatible(tavType, e.Type){
+			e.Type = tavType
+		}
+		return true
+	}
+	return true
+}

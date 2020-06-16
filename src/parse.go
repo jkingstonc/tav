@@ -439,11 +439,7 @@ func (parser *Parser) SingleVal() AST{
 					Type:   TYPE_F32,
 				},
 				Value: TavValue{
-					Int:    0,
 					Float:  value,
-					String: "",
-					Bool:   false,
-					Any:    nil,
 				},
 			}
 		}else{
@@ -455,24 +451,19 @@ func (parser *Parser) SingleVal() AST{
 				},
 				Value: TavValue{
 					Int:    value,
-					Float:  0,
-					String: "",
-					Bool:   false,
-					Any:    nil,
 				},
 			}
 		}
 	}else if t:=parser.Consumer.Consume(SLITERAL);t!=nil{
+		// parse the string literal into a character array here
 		return &LiteralAST{
 			Type: TavType{
-				Type:   TYPE_STRING,
+				Type:        TYPE_I8,
+				Indirection: 1,
+				RetType:     nil,
 			},
 			Value: TavValue{
-				Int:    0,
-				Float:  0,
-				String: t.Value.(string),
-				Bool:   false,
-				Any:    nil,
+				String: []byte(t.Value.(string)),
 			},
 		}
 	}else if t:=parser.Consumer.Consume(TRUE);t!=nil{
@@ -481,11 +472,7 @@ func (parser *Parser) SingleVal() AST{
 				Type:   TYPE_BOOL,
 			},
 			Value: TavValue{
-				Int:    0,
-				Float:  0,
-				String: "",
 				Bool:   true,
-				Any:    nil,
 			},
 		}
 	}else if t:=parser.Consumer.Consume(FALSE);t!=nil{
@@ -494,11 +481,7 @@ func (parser *Parser) SingleVal() AST{
 				Type:   TYPE_BOOL,
 			},
 			Value: TavValue{
-				Int:    0,
-				Float:  0,
-				String: "",
 				Bool:   false,
-				Any:    nil,
 			},
 		}
 	}else if parser.Consumer.Consume(LEFT_PAREN) != nil{ // group expression e.g. (1+2)
