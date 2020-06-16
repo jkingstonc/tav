@@ -260,7 +260,7 @@ func (parser *Parser) ConnectiveOr() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.ConnectiveAnd(),
+			Right:    parser.ConnectiveOr(),
 		}
 	}
 	return higherPrecedence
@@ -272,7 +272,7 @@ func (parser *Parser) ConnectiveAnd() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.BitwiseOr(),
+			Right:    parser.ConnectiveAnd(),
 		}
 	}
 	return higherPrecedence
@@ -284,7 +284,7 @@ func (parser *Parser) BitwiseOr() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.BitwiseAnd(),
+			Right:    parser.BitwiseOr(),
 		}
 	}
 	return higherPrecedence
@@ -296,7 +296,7 @@ func (parser *Parser) BitwiseAnd() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.Equality(),
+			Right:    parser.BitwiseAnd(),
 		}
 	}
 	return higherPrecedence
@@ -308,7 +308,7 @@ func (parser *Parser) Equality() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.Comparison(),
+			Right:    parser.Equality(),
 		}
 	}
 	return higherPrecedence
@@ -320,7 +320,7 @@ func (parser *Parser) Comparison() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.BitwiseShift(),
+			Right:    parser.Comparison(),
 		}
 	}
 	return higherPrecedence
@@ -332,7 +332,7 @@ func (parser *Parser) BitwiseShift() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.PlusMinus(),
+			Right:    parser.BitwiseShift(),
 		}
 	}
 	return higherPrecedence
@@ -346,7 +346,7 @@ func (parser *Parser) PlusMinus() AST{
 		b:=&BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.MulDivModRem(),
+			Right:    parser.PlusMinus(),
 		}
 		return b
 	}
@@ -362,7 +362,7 @@ func (parser *Parser) MulDivModRem() AST{
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
-			Right:    parser.Unary(),
+			Right:    parser.MulDivModRem(),
 		}
 	}
 	return higherPrecedence
@@ -385,7 +385,7 @@ func (parser *Parser) Call() AST{
 	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
 	// we need some way of check
 
-	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN{
+	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN || parser.Consumer.Expect(LEFT_PAREN){
 		var args []AST
 		if parser.Consumer.Consume(LEFT_PAREN) != nil{
 			for !parser.Consumer.Expect(RIGHT_PAREN) {
@@ -519,6 +519,8 @@ func (parser *Parser) SingleVal() AST{
 		expression := parser.Expression()
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 		return &GroupAST{Group: expression}
+	}else{
+		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "unexpected token")
 	}
 	return nil
 }

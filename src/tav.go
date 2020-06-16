@@ -82,44 +82,52 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 	os.Exit(2)
 }
 
-func LLType(tavType TavType) types.Type{
+func ConvertType(tavType TavType) types.Type{
+	return LLType(tavType, tavType.IsPtr)
+}
+
+func LLType(tavType TavType, ptr bool) types.Type{
+	if tavType.IsPtr{
+		return LLType(*tavType.PtrVal, tavType.PtrVal.IsPtr)
+	}
 	switch tavType.Type {
 	case TYPE_BOOL:
-		if tavType.IsPtr {
+		if ptr {
 			return types.I1Ptr
 		}
 		return types.I1
 	case TYPE_I8:
-		if tavType.IsPtr {
+		if ptr {
 			return types.I8Ptr
 		}
 		return types.I8
 	case TYPE_I16:
-		if tavType.IsPtr {
+		if ptr {
 			return types.I16Ptr
 		}
 		return types.I16
 	case TYPE_I32:
-		if tavType.IsPtr {
+		if ptr {
 			return types.I32Ptr
 		}
 		return types.I32
 	case TYPE_I64:
-		if tavType.IsPtr {
+		if ptr {
 			return types.I64Ptr
 		}
 		return types.I64
 	case TYPE_F32:
-		if tavType.IsPtr {
+		if ptr {
 			// NOT SURE HOW THIS WORKS
 		}
 		return types.Float
 	case TYPE_F64:
-		if tavType.IsPtr {
+		if ptr {
 			// NOT SURE HOW THIS WORKS
 		}
 		return types.Double
 	}
+	Log("fuck sake", tavType)
 	return types.Void
 }
 

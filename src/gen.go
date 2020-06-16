@@ -17,7 +17,7 @@ type Generator struct {
 }
 
 func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
-	llType := LLType(tavType)
+	llType := ConvertType(tavType)
 	switch llType {
 	case types.I1:
 		var val int64
@@ -81,7 +81,7 @@ func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
 	s := types.NewStruct()
 	s.Packed = StructAST.Packed
 	for _, field := range StructAST.Fields {
-		s.Fields = append(s.Fields, LLType(field.Type))
+		s.Fields = append(s.Fields, ConvertType(field.Type))
 	}
 	generator.Module.NewTypeDef(StructAST.Identifier.Lexme(), s)
 	return nil
@@ -93,11 +93,11 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	generator.SymTable = generator.SymTable.NewScope()
 	var params []*ir.Param
 	for _, param := range FnAST.Params{
-		p := ir.NewParam(param.Identifier.Lexme(), LLType(param.Type))
+		p := ir.NewParam(param.Identifier.Lexme(), ConvertType(param.Type))
 		params = append(params, p)
 		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, 0, p)
 	}
-	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), LLType(FnAST.RetType), params...)
+	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), ConvertType(FnAST.RetType), params...)
 	b := f.NewBlock("")
 	generator.CurrentBlock = append(generator.CurrentBlock, b) // push the block to the stack
 	for _, stmt := range FnAST.Body {
@@ -121,7 +121,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	// allocate memory on the stack & then store the assignment
-	v := b.NewAlloca(LLType(VarDefAST.Type))
+	v := b.NewAlloca(ConvertType(VarDefAST.Type))
 	if VarDefAST.Assignment != nil{
 		assignment := VarDefAST.Assignment.Visit(generator)
 		b.NewStore(assignment.(value.Value), v)
@@ -168,17 +168,20 @@ func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface
 	case *ir.Param:
 		return variable.Value
 	default:
-		val := b.NewLoad(LLType(variable.Type), variable.Value.(value.Value))
+		val := b.NewLoad(ConvertType(variable.Type), variable.Value.(value.Value))
 		return val
 	}
 }
 
 func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
 	switch UnaryAST.Operator.Type{
 	case ADDR:
-		b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
-		right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
-		b.NewGetElementPtr(types.I32, right.(value.Value))
+		b.NewIntToPtr(right.(value.Value), types.I32)
+	case STAR:
+
+		b.NewPtrToInt(right.(value.Value), types.I32)
 	}
 	return nil
 }

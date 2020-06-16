@@ -162,7 +162,10 @@ func (checker *Checker) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) interfa
 }
 
 func (checker *Checker) VisitCallAST(CallAST *CallAST) interface{} {
-
+	CallAST.Caller.Visit(checker)
+	for _, arg := range CallAST.Args{
+		arg.Visit(checker)
+	}
 	return nil
 }
 
