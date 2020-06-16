@@ -84,3 +84,7 @@ type Token struct {
 func (token *Token) Debug() {
 	Log(TokStrings[token.Type], token.Value)
 }
+
+func (token *Token) Lexme() string{
+	return token.Value.(string)
+}

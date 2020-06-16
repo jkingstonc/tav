@@ -9,7 +9,6 @@ const (
 	ERR_UNEXPECTED_TOKEN    = 0x0
 	ERR_INVALID_TYPE 	    = 0x1
 	ERR_INVALID_IDENTIFIER  = 0x2
-	ERR_INVALID_RETURN_TYPE = 0x3
 )
 
 // buffer the current active directives so we can process the rest of the tokens
@@ -120,7 +119,7 @@ func (parser *Parser) ParseStmtBlock() []AST {
 func (parser *Parser) Struct(identifier *Token) AST {
 	parser.SymTable = parser.SymTable.NewScope()
 	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Value.(string), TavType{
+	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_STRUCT,
 		IsPtr:  false,
 		PtrVal: nil,
@@ -142,8 +141,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the current symbol table
 	f := &FnAST{Identifier: identifier, RetType: *parser.ParseType()}
 
-	// we should probably instead use the return type???
-	parser.SymTable.Add(identifier.Value.(string), TavType{
+	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_FN,
 		IsPtr:  false,
 		PtrVal: nil,
@@ -166,18 +164,6 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 	if parser.Consumer.Expect(LEFT_CURLY) {
 		statements := parser.ParseStmtBlock()
 		f.Body = statements
-		// TODO Fix this, the problem is we pop out of the scope of the function, so the local variable we are wanting to check doesn't exist
-		// check that the return type is valid
-		//for _, stmt := range statements {
-		//	switch stmt.(type){
-		//	case *ReturnAST:
-		//		if parser.InferType(stmt) != f.RetType {
-		//			Log(parser.InferType(stmt))
-		//			Log()
-		//			parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_RETURN_TYPE, "return type doesn't match function")
-		//		}
-		//	}
-		//}
 	} else {
 		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after fn decleration")
 	}
@@ -194,6 +180,7 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 		Type:       TavType{},
 		Assignment: nil,
 	}
+
 	// explicit type define
 	if parser.Consumer.Consume(COLON) != nil {
 		// check if we have a pointer
@@ -207,15 +194,6 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 		default:
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
-				// check if the assigned type was correct
-				if t :=parser.InferType(def.Assignment); t != def.Type {
-					// check if we can do a cast
-					if (def.Type.Type == TYPE_I8 || def.Type.Type == TYPE_I16 ||def.Type.Type == TYPE_I32 || def.Type.Type == TYPE_I64) && (t.Type == TYPE_I8 || t.Type == TYPE_I16 ||t.Type == TYPE_I32 || t.Type == TYPE_I64) {
-
-					}else{
-						parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_TYPE, "types do not match")
-					}
-				}
 			}
 		}
 	} else {
@@ -226,7 +204,7 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 		def.Type = assignmentType
 	}
 	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Value.(string), def.Type, 0, nil)
+	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
 	if expectSemiColon {
 		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
 	}
@@ -239,7 +217,7 @@ func (parser *Parser) QuickAssign() (AST, TavType) {
 	// get the expression
 	expression := parser.Expression()
 	// then infer the type of the expression
-	exprType := parser.InferType(expression)
+	exprType := InferType(expression, parser.SymTable)
 	return expression, exprType
 }
 
@@ -359,11 +337,12 @@ func (parser *Parser) PlusMinus() AST{
 	for parser.Consumer.Expect(PLUS) || parser.Consumer.Expect(MINUS) {
 		// TODO check here for compound assignment
 		// if parser.Consumer.Expect(ASSIGN){...}
-		return &BinaryAST{
+		b:=&BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
 			Right:    parser.MulDivModRem(),
 		}
+		return b
 	}
 	return higherPrecedence
 }
@@ -396,10 +375,10 @@ func (parser *Parser) Unary() AST{
 }
 
 func (parser *Parser) Call() AST{
-	callee := parser.SingleVal()
+	callee := parser.Addressing()
 	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
 	// we need some way of check
-	if parser.InferType(callee).Type == TYPE_FN || parser.InferType(callee).Type == TYPE_FN{
+	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN{
 		var args []AST
 		if parser.Consumer.Consume(LEFT_PAREN) != nil{
 			for !parser.Consumer.Expect(RIGHT_PAREN) {
@@ -418,6 +397,16 @@ func (parser *Parser) Call() AST{
 	}
 
 	return callee
+}
+
+func (parser *Parser) Addressing() AST{
+	if parser.Consumer.Expect(ADDR) || parser.Consumer.Expect(STAR){
+		return &UnaryAST{
+			Operator: parser.Consumer.Advance(),
+			Right:    parser.Addressing(),
+		}
+	}
+	return parser.SingleVal()
 }
 
 func (parser *Parser) SingleVal() AST{
@@ -511,36 +500,6 @@ func (parser *Parser) SingleVal() AST{
 		return &GroupAST{Group: expression}
 	}
 	return nil
-}
-
-// figure out the type of an expression
-// TODO For now this will return ANY type
-func (parser *Parser) InferType(expression AST) TavType {
-	switch e := expression.(type){
-	case *VariableAST:			// get the type of the variable in the symbol table
-		t := parser.SymTable.Get(e.Identifier.Value.(string))
-		if t != nil{
-			return t.Type
-		}
-		Log(":(",parser.SymTable.Symbols[0])
-		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_INVALID_IDENTIFIER, "identifier doesn't exist")
-	case *LiteralAST:			// get the value of the literal
-		return e.Type
-	case *ReturnAST:			// get the value of the literal
-		return parser.InferType(e.Value)
-	case *CallAST:
-		// TODO figure out how we infer the type of a function call
-		t := parser.InferType(e.Caller)
-		Log("infering type of CallAST...", t.RetType)
-		return *t.RetType
-	}
-	// this is unreachable
-	return TavType{}
-}
-
-// join 2 infered types and figure out what the next type will be
-func (parser *Parser) JoinInfered(type1, type2 TavType) TavType {
-	return type1
 }
 
 // parse a type

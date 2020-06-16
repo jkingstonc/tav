@@ -18,7 +18,6 @@ const (
 )
 
 func BuildExe(module *ir.Module) uint8 {
-	Log("fuckballs")
 	ioutil.WriteFile("tmp/test.ll", []byte(module.String()), 0644)
 	c := exec.Command("llc", "tmp/test.ll")
 	err := c.Run()

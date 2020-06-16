@@ -43,6 +43,14 @@ type TavType struct {
 	RetType *TavType // used for function calls
 }
 
+func (TavType TavType) IsInt() bool{
+	return TavType.Type == TYPE_I8 || TavType.Type == TYPE_I16 || TavType.Type == TYPE_I32 || TavType.Type == TYPE_I64
+}
+
+func (TavType TavType) IsFloat() bool{
+	return TavType.Type == TYPE_F32 || TavType.Type == TYPE_F64
+}
+
 type Compiler struct {
 	FileName  string
 	Source   *string
@@ -113,4 +121,49 @@ func LLType(tavType TavType) types.Type{
 		return types.Double
 	}
 	return types.Void
+}
+
+
+// TODO some type of check as to whether the inference join was valid
+// infer the type of an expression
+// this may be somewhat recursive as we have to infer sub types
+// if there are multiple types, we do an inference join (infer the correct type given multiple)
+func InferType(expression AST, SymTable *SymTable) TavType {
+	switch e := expression.(type){
+	case *VariableAST:
+		t := SymTable.Get(e.Identifier.Lexme())
+		Assert(t!=nil, "symbol doesn't exist in symbol table")
+		return t.Type
+	case *LiteralAST:
+		return e.Type
+	case *ReturnAST:
+		return InferType(e.Value, nil)
+	case *BinaryAST:
+		return JoinInfered(InferType(e.Left, nil), InferType(e.Right, nil))
+	case *CallAST:
+		t := InferType(e.Caller, nil)
+		return *t.RetType
+	}
+	// this is unreachable
+	return TavType{}
+}
+
+// TODO some way to cast the type if they can be joined
+// join 2 infered types and figure out what the next type will be
+func JoinInfered(type1, type2 TavType) TavType {
+	if type1.Type == type2.Type {
+		return type1
+	}
+	// deal with number types
+	if type1.IsInt() && type2.IsInt(){
+		return type1
+	}else if type1.IsFloat() && type2.IsFloat(){
+		return type1
+	}else if type1.IsFloat() && type2.IsInt(){
+		return type1
+	}else if type1.IsInt() && type2.IsFloat(){
+		return type2
+	}
+	Assert(false, "cant join infered types")
+	return type1
 }
