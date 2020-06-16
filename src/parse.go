@@ -8,7 +8,6 @@ import (
 const (
 	ERR_UNEXPECTED_TOKEN    = 0x0
 	ERR_INVALID_TYPE 	    = 0x1
-	ERR_INVALID_IDENTIFIER  = 0x2
 )
 
 // buffer the current active directives so we can process the rest of the tokens
@@ -173,16 +172,15 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 // parse a variable definition (this only includes the identifier and type e.g. X : i32;, and assigning to
 // a definition e.g. X : i32 = 1;)
 func (parser *Parser) Define(expectSemiColon bool) AST {
-	identifier := parser.Consumer.Consume(IDENTIFIER)
-
-	def := &VarDefAST{
-		Identifier: identifier,
-		Type:       TavType{},
-		Assignment: nil,
-	}
-
 	// explicit type define
-	if parser.Consumer.Consume(COLON) != nil {
+	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON) {
+		identifier := parser.Consumer.Consume(IDENTIFIER)
+		parser.Consumer.Consume(COLON)
+		def := &VarDefAST{
+			Identifier: identifier,
+			Type:       TavType{},
+			Assignment: nil,
+		}
 		// check if we have a pointer
 		def.Type = *parser.ParseType()
 		// if the definition is of a struct or function, parse the body
@@ -195,20 +193,39 @@ func (parser *Parser) Define(expectSemiColon bool) AST {
 			if parser.Consumer.Consume(ASSIGN) != nil {
 				def.Assignment = parser.Expression()
 			}
+			// add the identifier to the current symbol table
+			parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
+			if expectSemiColon {
+				parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
+			}
+			return def
 		}
-	} else {
+	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN){
+		identifier := parser.Consumer.Consume(IDENTIFIER)
 		parser.Consumer.Consume(QUICK_ASSIGN)
+		def := &VarDefAST{
+			Identifier: identifier,
+			Type:       TavType{},
+			Assignment: nil,
+		}
 		// we are doing a quick assign
 		assignment, assignmentType := parser.QuickAssign()
 		def.Assignment = assignment
 		def.Type = assignmentType
+		// add the identifier to the current symbol table
+		parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
+		if expectSemiColon {
+			parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
+		}
+		return def
+	}else{
+		// we are assigning to a variable
+		a:= parser.Assignment()
+		if expectSemiColon {
+			parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
+		}
+		return a
 	}
-	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
-	if expectSemiColon {
-		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after definition")
-	}
-	return def
 }
 
 // FOR NOW, WE DON'T SUPPORT QUICK ASSIGNING STRUCTS OR FUNCTIONS
@@ -229,7 +246,7 @@ func (parser *Parser) Expression() AST {
 func (parser *Parser) Assignment() AST{
 	higherPrecedence := parser.ConnectiveOr()
 	if parser.Consumer.Consume(ASSIGN)!=nil{
-		assignValue := parser.Expression()
+		assignValue := parser.ConnectiveOr()
 		// the only 2 types of assignments are to variables, and to struct members e.g. x = 2; or vec.x = 2;
 		switch ast := higherPrecedence.(type){
 		case *VariableAST:

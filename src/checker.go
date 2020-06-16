@@ -98,14 +98,24 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 }
 
 func (checker *Checker) VisitBlockAST(BlockAST *BlockAST) interface{} {
+	checker.SymTable = checker.SymTable.NewScope()
+	for _, stmt := range BlockAST.Statements{
+		stmt.Visit(checker)
+	}
+	checker.SymTable = checker.SymTable.PopScope()
 	return nil
 }
 
 func (checker *Checker) VisitExprSmtAST(ExprStmtAST *ExprStmtAST) interface{} {
+	ExprStmtAST.Visit(checker)
 	return nil
 }
 
 func (checker *Checker) VisitAssignAST(AsssignAST *AsssignAST) interface{} {
+	checker.Reporter.Position = AsssignAST.Identifier.Position
+	if InferType(AsssignAST.Value, checker.SymTable) != checker.SymTable.Get(AsssignAST.Identifier.Lexme()).Type{
+		checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "cannot assign type to variable")
+	}
 	return nil
 }
 
