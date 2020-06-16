@@ -90,10 +90,14 @@ func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
 // visit a function
 // return the actual function
 func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
-
 	generator.SymTable = generator.SymTable.NewScope()
-
-	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), LLType(FnAST.RetType))
+	var params []*ir.Param
+	for _, param := range FnAST.Params{
+		p := ir.NewParam(param.Identifier.Lexme(), LLType(param.Type))
+		params = append(params, p)
+		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, 0, p)
+	}
+	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), LLType(FnAST.RetType), params...)
 	b := f.NewBlock("")
 	generator.CurrentBlock = append(generator.CurrentBlock, b) // push the block to the stack
 	for _, stmt := range FnAST.Body {
@@ -129,6 +133,11 @@ func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 }
 
 func (generator *Generator) VisitBlockAST(BlockAST *BlockAST) interface{} {
+	generator.SymTable = generator.SymTable.NewScope()
+	for _, stmt := range BlockAST.Statements{
+		stmt.Visit(generator)
+	}
+	generator.SymTable = generator.SymTable.PopScope()
 	return nil
 }
 
@@ -144,12 +153,24 @@ func (generator *Generator) VisitListAST(ListAST *ListAST) interface{} {
 	return nil
 }
 
+// return the value of a variable in the symbol table
+// TODO This means functions are not first class variables as you cannot cast them to value.Value
 func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface{} {
-	// first get the variable from the symbol table (its a value.Value)
 	variable := generator.SymTable.Get(VariableAST.Identifier.Lexme())
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
-	val := b.NewLoad(LLType(variable.Type), variable.Value.(value.Value))
-	return val
+	// when returning variables, we have to check the value
+	// if the value is a function, we don't want to return a variable load instruction
+	// instead we want to directly return the function to call
+	// if the value is a paramater, we return the value directly
+	switch variable.Value.(type){
+	case *ir.Func:
+		return variable.Value
+	case *ir.Param:
+		return variable.Value
+	default:
+		val := b.NewLoad(LLType(variable.Type), variable.Value.(value.Value))
+		return val
+	}
 }
 
 func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
@@ -195,7 +216,11 @@ func (generator *Generator) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) int
 func (generator *Generator) VisitCallAST(CallAST *CallAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	callee := CallAST.Caller.Visit(generator)
-	return b.NewCall(callee.(value.Value))
+	var args []value.Value
+	for _, arg := range CallAST.Args{
+		args = append(args, arg.Visit(generator).(value.Value))
+	}
+	return b.NewCall(callee.(value.Value), args...)
 }
 
 func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface{} {

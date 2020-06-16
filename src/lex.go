@@ -302,7 +302,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 		}
 		return true
 	case 'r':
-		if !lexer.CheckKeyword("eturn", RETURN, nil) {
+		if !lexer.CheckKeyword("et", RETURN, nil) {
 			break
 		}
 		return true

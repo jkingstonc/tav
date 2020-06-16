@@ -68,11 +68,11 @@ func (parser *Parser) Statement() AST {
 	} else if parser.Consumer.Consume(BREAK) != nil {
 		ast =  parser.Break()
 	} else if parser.Consumer.Consume(FOR) != nil {
-		ast =  parser.For()
+		return parser.For()
 	} else if parser.Consumer.Consume(IF) != nil {
-		ast =  parser.If()
-	} else if parser.Consumer.Consume(LEFT_CURLY) != nil {
-		ast =  &BlockAST{Statements: parser.ParseStmtBlock()}
+		return parser.If()
+	} else if parser.Consumer.Expect(LEFT_CURLY) {
+		return &BlockAST{Statements: parser.ParseStmtBlock()}
 	} else {
 		ast = parser.ExpressionStmt()
 	}
@@ -134,6 +134,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 
 	for !parser.Consumer.Expect(RIGHT_CURLY) {
 		s.Fields = append(s.Fields, parser.Define().(*VarDefAST))
+		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after member decleration")
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
@@ -154,17 +155,18 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 	},  0, f)
 
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
-		var params []*VarDefAST
+		var params []VarDefAST
 		// process the arguments
 		for !parser.Consumer.Expect(RIGHT_PAREN) {
 			// each paramater is essentially a variable decleration
-			params = append(params, parser.Define().(*VarDefAST))
+			params = append(params, *parser.Define().(*VarDefAST))
 			if parser.Consumer.Expect(RIGHT_PAREN){
 				break
 			}
 			parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between paramaters")
 		}
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
+		f.Params = params
 	}
 	if parser.Consumer.Expect(LEFT_CURLY) {
 		statements := parser.ParseStmtBlock()
@@ -199,7 +201,7 @@ func (parser *Parser) Define() AST {
 			def.Assignment = parser.Expression()
 		}
 		// add the identifier to the current symbol table
-		parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
+		parser.SymTable.Add(def.Identifier.Lexme(), def.Type, 0, nil)
 		return def
 	}
 }
@@ -382,6 +384,7 @@ func (parser *Parser) Call() AST{
 	callee := parser.Addressing()
 	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
 	// we need some way of check
+
 	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN{
 		var args []AST
 		if parser.Consumer.Consume(LEFT_PAREN) != nil{

@@ -132,8 +132,12 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 	switch e := expression.(type){
 	case *VariableAST:
 		t := SymTable.Get(e.Identifier.Lexme())
-		Assert(t!=nil, "symbol doesn't exist in symbol table")
-		return t.Type
+		if t != nil{
+			return t.Type
+		}
+		//Assert(t!=nil, "symbol doesn't exist in symbol table")
+		//return t.Type
+		break
 	case *LiteralAST:
 		return e.Type
 	case *ReturnAST:

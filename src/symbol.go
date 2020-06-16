@@ -70,6 +70,16 @@ func (symTable *SymTable) Add(identifier string, symType TavType, attributes uin
 
 
 // get the symbol value given an id
+func (symTable *SymTable) GetLocal(identifier string) *Symbol {
+	for _, sym := range symTable.Symbols{
+		if sym.Identifier == identifier {
+			return sym
+		}
+	}
+	return nil
+}
+
+// get the symbol value given an id
 func (symTable *SymTable) Get(identifier string) *Symbol {
 	for _, sym := range symTable.Symbols{
 		if sym.Identifier == identifier {

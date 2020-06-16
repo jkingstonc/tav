@@ -3,6 +3,7 @@ package src
 const (
 	ERR_REDECLARED = 0x0
 	ERR_INVALID_RETURN_TYPE = 0x1
+	ERR_NO_VAR = 0x2
 )
 
 // implements Visitor
@@ -46,6 +47,7 @@ func (checker *Checker) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
 }
 
 func (checker *Checker) VisitReturnAST(ReturnAST *ReturnAST) interface{} {
+	ReturnAST.Value.Visit(checker)
 	return nil
 }
 
@@ -76,6 +78,11 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 	}, 0, nil)
 
 	checker.SymTable = checker.SymTable.NewScope()
+
+	for _, param := range FnAST.Params{
+		param.Visit(checker)
+	}
+
 	for _, stmt := range FnAST.Body{
 		stmt.Visit(checker)
 		switch s:=stmt.(type){
@@ -97,7 +104,8 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	checker.Reporter.Position = VarDefAST.Identifier.Position
 
-	if checker.SymTable.Get(VarDefAST.Identifier.Lexme())!=nil{
+	// only check the local scope, otherwise we can redeclare global variables
+	if checker.SymTable.GetLocal(VarDefAST.Identifier.Lexme())!=nil{
 		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "variable re-declared")
 	}
 	// add the define to the symbol table
@@ -134,6 +142,10 @@ func (checker *Checker) VisitListAST(ListAST *ListAST) interface{} {
 }
 
 func (checker *Checker) VisitVariableAST(VariableAST *VariableAST) interface{} {
+	checker.Reporter.Position = VariableAST.Identifier.Position
+	if checker.SymTable.Get(VariableAST.Identifier.Lexme())==nil{
+		checker.Compiler.Critical(checker.Reporter, ERR_NO_VAR, "variable doesn't exist")
+	}
 	return nil
 }
 
