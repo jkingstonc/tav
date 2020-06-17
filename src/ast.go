@@ -3,6 +3,7 @@ package src
 type Visitor interface {
 	// statements
 	VisitRootAST(RootAST *RootAST) interface{}
+	VisitCastAST(CastAST *CastAST) interface{}
 	VisitReturnAST(ReturnAST *ReturnAST) interface{}
 	VisitBreakAST(BreakAST *BreakAST) interface{}
 	VisitForAST(ForAST *ForAST) interface{}
@@ -36,6 +37,13 @@ type RootAST struct {
 }
 func (RootAST *RootAST) Visit(Visitor Visitor) interface{}{
 	return Visitor.VisitRootAST(RootAST)
+}
+type CastAST struct {
+	TavType TavType
+	Expr    AST
+}
+func (CastAST *CastAST) Visit(Visitor Visitor) interface{}{
+	return Visitor.VisitCastAST(CastAST)
 }
 type ReturnAST struct {
 	Value AST
@@ -124,6 +132,7 @@ func (ListAST *ListAST) Visit(Visitor Visitor) interface{} {
 }
 type VariableAST struct {
 	Identifier *Token
+	Type       TavType
 }
 func (VariableAST *VariableAST) Visit(Visitor Visitor)  interface{}{
 	return Visitor.VisitVariableAST(VariableAST)

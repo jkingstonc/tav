@@ -51,6 +51,10 @@ func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
 	return nil
 }
 
+func (checker *Checker) VisitCastAST(CastAST *CastAST) interface{}{
+	return nil
+}
+
 func (checker *Checker) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
 	checker.Reporter.Position = VarSetAST.Identifier.Position
 	if InferType(VarSetAST.Value, checker.SymTable) != checker.SymTable.Get(VarSetAST.Identifier.Lexme()).Type {
@@ -104,7 +108,10 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 			// check if the return value is of the same type
 			if InferType(s.Value, checker.SymTable) != FnAST.RetType {
 				checker.Reporter.Position = FnAST.Identifier.Position
-				checker.Compiler.Critical(checker.Reporter, ERR_INVALID_RETURN_TYPE, "return types do not match")
+				// cast the value to the return value automatically
+				if !CastValue(FnAST.RetType, s.Value){
+					checker.Compiler.Critical(checker.Reporter, ERR_INVALID_RETURN_TYPE, "return types do not match")
+				}
 			}
 		}
 	}

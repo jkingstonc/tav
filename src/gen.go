@@ -32,9 +32,8 @@ func (Generator *Generator) PrintfProto() *ir.Func{
 }
 
 func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
-	llType := ConvertType(tavType)
-	switch llType {
-	case types.I1:
+	switch tavType.Type {
+	case TYPE_BOOL:
 		var val int64
 		if TavValue.Bool == true{
 			val = 1
@@ -42,27 +41,58 @@ func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 			val = 0
 		}
 		return constant.NewInt(types.I1, val)
-	case types.I8:
+	case TYPE_I8:
 		return constant.NewInt(types.I8, TavValue.Int)
-	case types.I16:
+	case TYPE_I16:
 		return constant.NewInt(types.I16, TavValue.Int)
-	case types.I32:
+	case TYPE_I32:
 		return constant.NewInt(types.I32, TavValue.Int)
-	case types.I64:
+	case TYPE_I64:
 		return constant.NewInt(types.I64, TavValue.Int)
-	case types.Float:
+	case TYPE_F32:
 		return constant.NewFloat(types.Float, TavValue.Float)
-	case types.Double:
+	case TYPE_F64:
 		return constant.NewFloat(types.Double, TavValue.Float)
 	}
 	return nil
 }
+
+//func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
+//	llType := ConvertType(tavType)
+//	switch llType {
+//	case types.I1:
+//		var val int64
+//		if TavValue.Bool == true{
+//			val = 1
+//		}else{
+//			val = 0
+//		}
+//		return constant.NewInt(types.I1, val)
+//	case types.I8:
+//		return constant.NewInt(types.I8, TavValue.Int)
+//	case types.I16:
+//		return constant.NewInt(types.I16, TavValue.Int)
+//	case types.I32:
+//		return constant.NewInt(types.I32, TavValue.Int)
+//	case types.I64:
+//		return constant.NewInt(types.I64, TavValue.Int)
+//	case types.Float:
+//		return constant.NewFloat(types.Float, TavValue.Float)
+//	case types.Double:
+//		return constant.NewFloat(types.Double, TavValue.Float)
+//	}
+//	return nil
+//}
 
 func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
 	generator.PrintfProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(generator)
 	}
+	return nil
+}
+
+func (generator *Generator) VisitCastAST(CastAST *CastAST) interface{}{
 	return nil
 }
 
@@ -95,9 +125,12 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 
 func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
 	s := types.NewStruct()
+	generator.SymTable.Add(StructAST.Identifier.Lexme(), TavType{
+		Type: TYPE_STRUCT,
+	},0, s)
 	s.Packed = StructAST.Packed
 	for _, field := range StructAST.Fields {
-		s.Fields = append(s.Fields, ConvertType(field.Type))
+		s.Fields = append(s.Fields, ConvertType(field.Type, generator.SymTable))
 	}
 	generator.Module.NewTypeDef(StructAST.Identifier.Lexme(), s)
 	return nil
@@ -109,11 +142,11 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	generator.SymTable = generator.SymTable.NewScope()
 	var params []*ir.Param
 	for _, param := range FnAST.Params{
-		p := ir.NewParam(param.Identifier.Lexme(), ConvertType(param.Type))
+		p := ir.NewParam(param.Identifier.Lexme(), ConvertType(param.Type, generator.SymTable))
 		params = append(params, p)
 		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, 0, p)
 	}
-	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), ConvertType(FnAST.RetType), params...)
+	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), ConvertType(FnAST.RetType, generator.SymTable), params...)
 	b := f.NewBlock("")
 	generator.CurrentBlock = append(generator.CurrentBlock, b) // push the block to the stack
 	for _, stmt := range FnAST.Body {
@@ -135,7 +168,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	// allocate memory on the stack & then store the assignment
-	v := b.NewAlloca(ConvertType(VarDefAST.Type))
+	v := b.NewAlloca(ConvertType(VarDefAST.Type, generator.SymTable))
 	if VarDefAST.Assignment != nil{
 		assignment := VarDefAST.Assignment.Visit(generator)
 		b.NewStore(assignment.(value.Value), v)
@@ -176,13 +209,17 @@ func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface
 	// if the value is a function, we don't want to return a variable load instruction
 	// instead we want to directly return the function to call
 	// if the value is a paramater, we return the value directly
-	switch variable.Value.(type){
-	case *ir.Func:
+	switch variable.Type.Type{
+	case TYPE_INSTANCE:
 		return variable.Value
+	case TYPE_FN:
+		return variable.Value
+	}
+	switch variable.Value.(type){
 	case *ir.Param:
 		return variable.Value
 	default:
-		val := b.NewLoad(ConvertType(variable.Type), variable.Value.(value.Value))
+		val := b.NewLoad(ConvertType(variable.Type, generator.SymTable), variable.Value.(value.Value))
 		return val
 	}
 }
@@ -190,11 +227,18 @@ func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface
 func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
+	// we have to invert the pointers (e.g. from *i32 -> i32 and vice versa)
+	// the reason being the LLVM bindings want to see the target variable type
+	// TODO multiple levels of indirection
 	switch UnaryAST.Operator.Type{
 	case ADDR:
+		//inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), 1))
+		//return	b.NewIntToPtr(right.(value.Value), inverted)
 		return b.NewIntToPtr(right.(value.Value), types.I8Ptr)
 	case STAR:
-		return b.NewLoad(types.I8, right.(value.Value))
+		//inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), -1))
+		//return b.NewPtrToInt(right.(value.Value), inverted)
+		return b.NewPtrToInt(right.(value.Value), types.I8)
 	}
 	return nil
 }
@@ -240,11 +284,22 @@ func (generator *Generator) VisitCallAST(CallAST *CallAST) interface{} {
 }
 
 func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface{} {
-	return nil
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	s := StructGet.Struct.Visit(generator)
+	//typeOfStruct := generator.SymTable.Get("vec")
+	typeOfStruct := ConvertType(InferType(StructGet.Struct, generator.SymTable),generator.SymTable)
+	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0))
+	return member
 }
 
 func (generator *Generator) VisitStructSetAST(StructSetAST *StructSetAST) interface{} {
-	return nil
+	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	s := StructSetAST.Struct.Visit(generator)
+	typeOfStruct := ConvertType(InferType(StructSetAST.Struct, generator.SymTable),generator.SymTable)
+	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	val := StructSetAST.Value.Visit(generator).(value.Value)
+	b.NewStore(val, member)
+	return member
 }
 
 func (generator *Generator) VisitGroupAST(GroupAST *GroupAST) interface{} {

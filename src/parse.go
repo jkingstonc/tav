@@ -373,11 +373,21 @@ func (parser *Parser) Unary() AST{
 			Right:    parser.Unary(),
 		}
 	}
+	return parser.Addressing()
+}
+
+func (parser *Parser) Addressing() AST{
+	if parser.Consumer.Expect(ADDR) || parser.Consumer.Expect(STAR){
+		return &UnaryAST{
+			Operator: parser.Consumer.Advance(),
+			Right:    parser.Addressing(),
+		}
+	}
 	return parser.Call()
 }
 
 func (parser *Parser) Call() AST{
-	callee := parser.Addressing()
+	callee := parser.SingleVal()
 	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
 	// we need some way of check
 
@@ -416,16 +426,6 @@ func (parser *Parser) Call() AST{
 	return callee
 }
 
-func (parser *Parser) Addressing() AST{
-	if parser.Consumer.Expect(ADDR) || parser.Consumer.Expect(STAR){
-		return &UnaryAST{
-			Operator: parser.Consumer.Advance(),
-			Right:    parser.Addressing(),
-		}
-	}
-	return parser.SingleVal()
-}
-
 func (parser *Parser) SingleVal() AST{
 	if t:=parser.Consumer.Consume(IDENTIFIER); t!=nil{
 		return &VariableAST{Identifier: t}
@@ -458,7 +458,7 @@ func (parser *Parser) SingleVal() AST{
 		// parse the string literal into a character array here
 		return &LiteralAST{
 			Type: TavType{
-				Type:        TYPE_I8,
+				Type:        TYPE_STRING,
 				Indirection: 1,
 				RetType:     nil,
 			},
@@ -499,6 +499,7 @@ func (parser *Parser) SingleVal() AST{
 func (parser *Parser) ParseType() *TavType {
 	typ := &TavType{
 		Type:   	 0,
+		Instance:    "",
 		Indirection: 0,
 		RetType: 	 nil,
 	}
@@ -509,6 +510,9 @@ func (parser *Parser) ParseType() *TavType {
 	if t := parser.Consumer.Consume(TYPE); t != nil {
 		// it isn't a pointer, so get the type
 		typ.Type = t.Value.(uint32)
+	}else if t:=parser.Consumer.Consume(IDENTIFIER); t!= nil{
+		typ.Type = TYPE_INSTANCE
+		typ.Instance = t.Lexme()
 	}
 	return typ
 }

@@ -23,16 +23,17 @@ const (
 	TYPE_F64       uint32 = 0xA
 	TYPE_BOOL      uint32 = 0xB
 	TYPE_STRUCT    uint32 = 0xC
-	TYPE_FN        uint32 = 0xD
-	TYPE_ANY       uint32 = 0xE
-	TYPE_NULL      uint32 = 0xF
+	TYPE_INSTANCE  uint32 = 0xD // Instance of a struct
+	TYPE_STRING    uint32 = 0xE
+	TYPE_FN        uint32 = 0xF
+	TYPE_ANY       uint32 = 0x10
+	TYPE_NULL      uint32 = 0x11
 )
 
 type File struct {
 	Filename string
 	Source   *string
 }
-
 
 type TavValue struct {
 	Int    int64
@@ -44,7 +45,8 @@ type TavValue struct {
 
 type TavType struct {
 	Type        uint32
-	Indirection uint8
+	Instance    string   // store the identifier of the instance we are referencing
+	Indirection int8
 	RetType     *TavType // used for function calls
 }
 
@@ -86,7 +88,7 @@ func (compiler *Compiler) Critical(reporter *Reporter, errCode uint32, msg strin
 	os.Exit(2)
 }
 
-func ConvertType(tavType TavType) types.Type {
+func ConvertType(tavType TavType, SymTable *SymTable) types.Type {
 	switch tavType.Type {
 	case TYPE_BOOL:
 		if tavType.Indirection > 0 {
@@ -123,8 +125,20 @@ func ConvertType(tavType TavType) types.Type {
 			// NOT SURE HOW THIS WORKS
 		}
 		return types.Double
+	case TYPE_STRING:
+		return types.I8Ptr
+	case TYPE_INSTANCE:
+		return SymTable.Get(tavType.Instance).Value.(types.Type)
 	}
 	return types.Void
+}
+
+func InvertPtrType(tavType TavType, direction int8) TavType{
+	return TavType{
+		Type:        tavType.Type,
+		Indirection: tavType.Indirection+direction,
+		RetType:     tavType.RetType,
+	}
 }
 
 // TODO some type of check as to whether the inference join was valid
@@ -213,6 +227,8 @@ func Compatible(t1, t2 TavType) bool{
 
 // cast an expression to a certian type
 // TODO actually check if the cast is valid, this is very hacky
+// TODO also this probably shouldn't modify the expression, it may lead to some errors in code gen
+// as this is called in the checker
 func CastValue(tavType TavType, expression AST) bool{
 	switch e:=expression.(type){
 	case *LiteralAST:
