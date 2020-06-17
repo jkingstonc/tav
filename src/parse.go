@@ -126,7 +126,7 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	// add the identifier to the current symbol table
 	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_STRUCT,
-	}, 0, nil)
+	}, 0, nil, nil)
 	s := &StructAST{Identifier: identifier}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
 
@@ -148,7 +148,7 @@ func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the c
 	parser.SymTable.Add(identifier.Lexme(), TavType{
 		Type:   TYPE_FN,
 		RetType: &f.RetType,
-	},  0, f)
+	},  0, f, nil)
 
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 		var params []VarDefAST
@@ -197,7 +197,7 @@ func (parser *Parser) Define() AST {
 			def.Assignment = parser.Expression()
 		}
 		// add the identifier to the current symbol table
-		parser.SymTable.Add(def.Identifier.Lexme(), def.Type, 0, nil)
+		parser.SymTable.Add(def.Identifier.Lexme(), def.Type, 0, nil, nil)
 		return def
 	}
 }
@@ -217,7 +217,7 @@ func (parser *Parser) QuickAssign() AST {
 	// then infer the type of the expression
 	def.Type = InferType(def.Assignment, parser.SymTable)
 	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil)
+	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil, nil)
 
 	return def
 }

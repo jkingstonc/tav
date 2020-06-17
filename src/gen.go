@@ -26,7 +26,7 @@ func (Generator *Generator) PrintfProto() *ir.Func{
 			Indirection: 0,
 			RetType:     nil,
 		},
-	}, 0, f)
+	}, 0, f, nil)
 
 	return f
 }
@@ -127,7 +127,7 @@ func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
 	s := types.NewStruct()
 	generator.SymTable.Add(StructAST.Identifier.Lexme(), TavType{
 		Type: TYPE_STRUCT,
-	},0, s)
+	},0, s, nil)
 	s.Packed = StructAST.Packed
 	for _, field := range StructAST.Fields {
 		s.Fields = append(s.Fields, ConvertType(field.Type, generator.SymTable))
@@ -144,7 +144,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	for _, param := range FnAST.Params{
 		p := ir.NewParam(param.Identifier.Lexme(), ConvertType(param.Type, generator.SymTable))
 		params = append(params, p)
-		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, 0, p)
+		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, 0, p, nil)
 	}
 	f := generator.Module.NewFunc(FnAST.Identifier.Lexme(), ConvertType(FnAST.RetType, generator.SymTable), params...)
 	b := f.NewBlock("")
@@ -158,7 +158,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	generator.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
 		Type:    TYPE_FN,
 		RetType: &FnAST.RetType,
-	}, 0, f)
+	}, 0, f, nil)
 	return f
 }
 
@@ -171,11 +171,17 @@ func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 	v := b.NewAlloca(ConvertType(VarDefAST.Type, generator.SymTable))
 	if VarDefAST.Assignment != nil{
 		assignment := VarDefAST.Assignment.Visit(generator)
-		b.NewStore(assignment.(value.Value), v)
+		if VarDefAST.Type.Type == TYPE_INSTANCE{
+			// needed this for vectors as we cant directly store vectors
+			l := b.NewLoad(ConvertType(VarDefAST.Type, generator.SymTable), assignment.(value.Value))
+			b.NewStore(l, v)
+		}else {
+			b.NewStore(assignment.(value.Value), v)
+		}
 	}
 	// store the allocated memory in the symbol table
 	// whenever we want the variable value, we retrieve this
-	generator.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, v)
+	generator.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, v, nil)
 	return nil
 }
 
@@ -232,13 +238,13 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 	// TODO multiple levels of indirection
 	switch UnaryAST.Operator.Type{
 	case ADDR:
-		//inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), 1))
+		inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), 1), generator.SymTable)
 		//return	b.NewIntToPtr(right.(value.Value), inverted)
-		return b.NewIntToPtr(right.(value.Value), types.I8Ptr)
+		return b.NewIntToPtr(right.(value.Value), inverted)
 	case STAR:
-		//inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), -1))
+		inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), -1), generator.SymTable)
 		//return b.NewPtrToInt(right.(value.Value), inverted)
-		return b.NewPtrToInt(right.(value.Value), types.I8)
+		return b.NewPtrToInt(right.(value.Value), inverted)
 	}
 	return nil
 }
@@ -286,9 +292,12 @@ func (generator *Generator) VisitCallAST(CallAST *CallAST) interface{} {
 func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface{} {
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	s := StructGet.Struct.Visit(generator)
-	//typeOfStruct := generator.SymTable.Get("vec")
 	typeOfStruct := ConvertType(InferType(StructGet.Struct, generator.SymTable),generator.SymTable)
-	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0))
+	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
+	if !StructGet.Deref{
+		// if we just return the member now, its a pointer! so we want to dereference it
+		return b.NewPtrToInt(member, types.I32)
+	}
 	return member
 }
 

@@ -19,6 +19,7 @@ type Symbol struct {
 	Identifier  string
 	Type        TavType
 	Attribuites uint8
+	SymTable    *SymTable
 	Value       interface{}		// used for value checks etc
 }
 
@@ -44,7 +45,7 @@ func (symTable *SymTable) NewScope() *SymTable{
 	// add it to the current scope
 	symTable.Add("", TavType{
 		Type:   TYPE_SYM_TABLE,
-	},0, newTable)
+	},0, newTable, nil)
 	// return the new table
 	return newTable
 }
@@ -57,12 +58,13 @@ func (symTable *SymTable) PopScope() *SymTable{
 }
 
 // add a symbol to the table and retrieve the integer id
-func (symTable *SymTable) Add(identifier string, symType TavType, attributes uint8, value interface{}) {
+func (symTable *SymTable) Add(identifier string, symType TavType, attributes uint8, value interface{}, child *SymTable) {
 	symTable.Symbols = append(symTable.Symbols, &Symbol{
 		Identifier:  identifier,
 		Type:        symType,
 		Attribuites: attributes,
 		Value:       value,
+		SymTable: 	 child,
 	})
 }
 

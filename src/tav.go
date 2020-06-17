@@ -152,8 +152,6 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 		if t != nil {
 			return t.Type
 		}
-		//Assert(t!=nil, "symbol doesn't exist in symbol table")
-		//return t.Type
 		break
 	case *UnaryAST:
 		switch e.Operator.Type {
@@ -179,6 +177,18 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 	case *CallAST:
 		t := InferType(e.Caller, SymTable)
 		return *t.RetType
+	case *StructGetAST:
+		// get the name of the struct that we are referencing
+		s := InferType(e.Struct, SymTable).Instance
+		// now get the struct entry in the symtable
+		t := SymTable.Get(s)
+		if t != nil {
+			// get the structs member symbol table
+			members := t.SymTable
+			// finally get the type of the member in that symtable
+			return members.Get(e.Member.Lexme()).Type
+		}
+		break
 	}
 	// this is unreachable
 	return TavType{}

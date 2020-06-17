@@ -24,7 +24,7 @@ func (Checker *Checker) PrintfProto() {
 			Indirection: 0,
 			RetType:     nil,
 		},
-	}, 0, nil)
+	}, 0, nil, nil)
 }
 
 func Check(compiler *Compiler, RootAST *RootAST) *RootAST {
@@ -81,6 +81,19 @@ func (checker *Checker) VisitIfAST(IfAST *IfAST) interface{} {
 }
 
 func (checker *Checker) VisitStructAST(StructAST *StructAST) interface{} {
+
+	checker.SymTable = checker.SymTable.NewScope()
+	memberSymTable := checker.SymTable
+	// create a new symbol table containing the children
+	for _, member := range StructAST.Fields{
+		checker.SymTable.Add(member.Identifier.Lexme(), InferType(member, checker.SymTable), 0, nil, nil)
+	}
+	checker.SymTable = checker.SymTable.PopScope()
+
+	checker.Reporter.Position = StructAST.Identifier.Position
+	checker.SymTable.Add(StructAST.Identifier.Lexme(), TavType{
+		Type:        TYPE_STRUCT,
+	}, 0, nil, memberSymTable)
 	return nil
 }
 
@@ -93,7 +106,7 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 	checker.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
 		Type:    TYPE_FN,
 		RetType: &FnAST.RetType,
-	}, 0, nil)
+	}, 0, nil, nil)
 
 	checker.SymTable = checker.SymTable.NewScope()
 
@@ -130,7 +143,7 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "variable re-declared")
 	}
 	// add the define to the symbol table
-	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, nil)
+	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, nil, nil)
 	// check if the assigned type was correct
 	if VarDefAST.Assignment != nil {
 		if t := InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
@@ -193,7 +206,7 @@ func (checker *Checker) VisitCallAST(CallAST *CallAST) interface{} {
 }
 
 func (checker *Checker) VisitStructGetAST(StructGet *StructGetAST) interface{} {
-	return nil
+	return InferType(StructGet, checker.SymTable)
 }
 
 func (checker *Checker) VisitStructSetAST(StructSetAST *StructSetAST) interface{} {
