@@ -128,7 +128,8 @@ func ConvertType(tavType TavType, SymTable *SymTable) types.Type {
 	case TYPE_STRING:
 		return types.I8Ptr
 	case TYPE_INSTANCE:
-		return SymTable.Get(tavType.Instance).Value.(types.Type)
+		v:=SymTable.Get(tavType.Instance).Value
+		return v.(types.Type)
 	}
 	return types.Void
 }
@@ -183,12 +184,13 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 		// now get the struct entry in the symtable
 		t := SymTable.Get(s)
 		if t != nil {
-			// get the structs member symbol table
-			members := t.SymTable
+			// get the structs member symbol table and access the member
 			// finally get the type of the member in that symtable
-			return members.Get(e.Member.Lexme()).Type
+			return t.SymTable.Get(e.Member.Lexme()).Type
 		}
 		break
+	case *VarDefAST:
+		return e.Type
 	}
 	// this is unreachable
 	return TavType{}

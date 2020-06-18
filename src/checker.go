@@ -86,7 +86,7 @@ func (checker *Checker) VisitStructAST(StructAST *StructAST) interface{} {
 	memberSymTable := checker.SymTable
 	// create a new symbol table containing the children
 	for _, member := range StructAST.Fields{
-		checker.SymTable.Add(member.Identifier.Lexme(), InferType(member, checker.SymTable), 0, nil, nil)
+		checker.SymTable.Add(member.Identifier.Lexme(), member.Type, 0, nil, nil)
 	}
 	checker.SymTable = checker.SymTable.PopScope()
 

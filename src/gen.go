@@ -57,33 +57,6 @@ func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 	return nil
 }
 
-//func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
-//	llType := ConvertType(tavType)
-//	switch llType {
-//	case types.I1:
-//		var val int64
-//		if TavValue.Bool == true{
-//			val = 1
-//		}else{
-//			val = 0
-//		}
-//		return constant.NewInt(types.I1, val)
-//	case types.I8:
-//		return constant.NewInt(types.I8, TavValue.Int)
-//	case types.I16:
-//		return constant.NewInt(types.I16, TavValue.Int)
-//	case types.I32:
-//		return constant.NewInt(types.I32, TavValue.Int)
-//	case types.I64:
-//		return constant.NewInt(types.I64, TavValue.Int)
-//	case types.Float:
-//		return constant.NewFloat(types.Float, TavValue.Float)
-//	case types.Double:
-//		return constant.NewFloat(types.Double, TavValue.Float)
-//	}
-//	return nil
-//}
-
 func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
 	generator.PrintfProto()
 	for _, statement := range RootAST.Statements {
@@ -124,10 +97,21 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 }
 
 func (generator *Generator) VisitStructAST(StructAST *StructAST) interface{} {
+
+	// add the struct members to the symbol table
+	generator.SymTable = generator.SymTable.NewScope()
+	memberSymTable := generator.SymTable
+	// create a new symbol table containing the children
+	for _, member := range StructAST.Fields{
+		generator.SymTable.Add(member.Identifier.Lexme(), member.Type, 0, nil, nil)
+	}
+	generator.SymTable = generator.SymTable.PopScope()
+
+
 	s := types.NewStruct()
 	generator.SymTable.Add(StructAST.Identifier.Lexme(), TavType{
 		Type: TYPE_STRUCT,
-	},0, s, nil)
+	},0, s, memberSymTable)
 	s.Packed = StructAST.Packed
 	for _, field := range StructAST.Fields {
 		s.Fields = append(s.Fields, ConvertType(field.Type, generator.SymTable))
@@ -305,10 +289,25 @@ func (generator *Generator) VisitStructSetAST(StructSetAST *StructSetAST) interf
 	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	s := StructSetAST.Struct.Visit(generator)
 	typeOfStruct := ConvertType(InferType(StructSetAST.Struct, generator.SymTable),generator.SymTable)
+
+	//offsett := CalcStructOffset(StructSetAST.Member.Lexme())
+
 	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
 	val := StructSetAST.Value.Visit(generator).(value.Value)
 	b.NewStore(val, member)
 	return member
+}
+
+// calculate the memory offset of a particular struct member
+func (generator *Generator) CalcStructOffset(name, member string) int{
+	// first find the struct in the symbol table
+	t:=generator.SymTable.Get(name).SymTable
+	for i, sym := range t.Symbols{
+		if sym.Identifier == member{
+			return i
+		}
+	}
+	return 0
 }
 
 func (generator *Generator) VisitGroupAST(GroupAST *GroupAST) interface{} {

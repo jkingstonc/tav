@@ -122,22 +122,29 @@ func (parser *Parser) ParseStmtBlock() []AST {
 
 // parse a struct
 func (parser *Parser) Struct(identifier *Token) AST {
+
 	parser.SymTable = parser.SymTable.NewScope()
-	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Lexme(), TavType{
-		Type:   TYPE_STRUCT,
-	}, 0, nil, nil)
+	memberSymTable := parser.SymTable
+
 	s := &StructAST{Identifier: identifier}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
 
 	for !parser.Consumer.Expect(RIGHT_CURLY) {
-		s.Fields = append(s.Fields, parser.Define().(*VarDefAST))
+		member := parser.Define().(*VarDefAST)
+		s.Fields = append(s.Fields, member)
+		memberSymTable.Add(member.Identifier.Lexme(), member.Type, 0,nil,nil)
 		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after member decleration")
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
 
 	parser.SymTable = parser.SymTable.PopScope()
+
+	// add the identifier to the current symbol table
+	parser.SymTable.Add(identifier.Lexme(), TavType{
+		Type:   TYPE_STRUCT,
+	}, 0, nil, memberSymTable)
+
 	return s
 }
 
