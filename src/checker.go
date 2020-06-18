@@ -16,22 +16,15 @@ type Checker struct {
 }
 
 func (Checker *Checker) PrintfProto() {
-	Checker.SymTable.Add("printf", TavType{
-		Type:        TYPE_I8,
-		Indirection: 1,
-		RetType:     &TavType{
-			Type:        TYPE_I32,
-			Indirection: 0,
-			RetType:     nil,
-		},
-	}, 0, nil, nil)
+	retType := NewTavType(TYPE_I32, "", 0, nil)
+	Checker.SymTable.Add("printf", NewTavType(TYPE_FN, "", 0, &retType), nil)
 }
 
 func Check(compiler *Compiler, RootAST *RootAST) *RootAST {
 	reporter := NewReporter(compiler.File.Filename, compiler.File.Source)
 	checker := Checker{
 		Compiler: compiler,
-		SymTable: NewSymTable(nil),
+		SymTable: NewSymTable(),
 		Reporter: reporter,
 		Root:     RootAST,
 	}
@@ -51,7 +44,7 @@ func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
 	return nil
 }
 
-func (checker *Checker) VisitCastAST(CastAST *CastAST) interface{}{
+func (checker *Checker) VisitCastAST(CastAST *CastAST) interface{} {
 	return nil
 }
 
@@ -81,19 +74,24 @@ func (checker *Checker) VisitIfAST(IfAST *IfAST) interface{} {
 }
 
 func (checker *Checker) VisitStructAST(StructAST *StructAST) interface{} {
-
-	checker.SymTable = checker.SymTable.NewScope()
-	memberSymTable := checker.SymTable
+	// create a new symbol table for the struct members
+	checker.SymTable.NewScope(StructAST.Identifier.Lexme() + "_members")
 	// create a new symbol table containing the children
-	for _, member := range StructAST.Fields{
-		checker.SymTable.Add(member.Identifier.Lexme(), member.Type, 0, nil, nil)
+	for _, member := range StructAST.Fields {
+		checker.SymTable.Add(member.Identifier.Lexme(), member.Type, nil)
 	}
-	checker.SymTable = checker.SymTable.PopScope()
+	checker.SymTable.PopScope()
 
 	checker.Reporter.Position = StructAST.Identifier.Position
-	checker.SymTable.Add(StructAST.Identifier.Lexme(), TavType{
-		Type:        TYPE_STRUCT,
-	}, 0, nil, memberSymTable)
+	// in the old system, we would add the symbol table here as the value
+	// however, in the new system we create a seperate entry for the members
+	// the symbol table currently would now look like this (after the following line)
+	//
+	// identifier_members: type_scope
+	//		- Symbol: x
+	//		- Symbol: y
+	// identifier:		   type_struct
+	checker.SymTable.Add(StructAST.Identifier.Lexme(), NewTavType(TYPE_STRUCT, "", 0, nil), nil)
 	return nil
 }
 
@@ -103,32 +101,31 @@ func (checker *Checker) VisitFnAST(FnAST *FnAST) interface{} {
 	if checker.SymTable.Get(FnAST.Identifier.Lexme()) != nil {
 		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "function re-declared")
 	}
-	checker.SymTable.Add(FnAST.Identifier.Lexme(), TavType{
-		Type:    TYPE_FN,
-		RetType: &FnAST.RetType,
-	}, 0, nil, nil)
-
-	checker.SymTable = checker.SymTable.NewScope()
-
+	// add the function name to the symbol table
+	checker.SymTable.Add(FnAST.Identifier.Lexme(), NewTavType(TYPE_FN, "", 0, &FnAST.RetType), nil)
+	// enter a new scope in the symbol table
+	checker.SymTable.NewScope(FnAST.Identifier.Lexme() + "_body")
+	// visit each paramater (they exist within the function scope)
 	for _, param := range FnAST.Params {
 		param.Visit(checker)
 	}
-
 	for _, stmt := range FnAST.Body {
 		stmt.Visit(checker)
 		switch s := stmt.(type) {
 		case *ReturnAST:
+			t := InferType(s.Value, checker.SymTable)
 			// check if the return value is of the same type
-			if InferType(s.Value, checker.SymTable) != FnAST.RetType {
+			if t != FnAST.RetType {
 				checker.Reporter.Position = FnAST.Identifier.Position
 				// cast the value to the return value automatically
-				if !CastValue(FnAST.RetType, s.Value){
+				if !Cast(FnAST.RetType, s.Value) {
 					checker.Compiler.Critical(checker.Reporter, ERR_INVALID_RETURN_TYPE, "return types do not match")
 				}
+				Log("meme")
 			}
 		}
 	}
-	checker.SymTable = checker.SymTable.PopScope()
+	checker.SymTable.PopScope()
 	return nil
 }
 
@@ -143,11 +140,13 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 		checker.Compiler.Critical(checker.Reporter, ERR_REDECLARED, "variable re-declared")
 	}
 	// add the define to the symbol table
-	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, 0, nil, nil)
+	checker.SymTable.Add(VarDefAST.Identifier.Lexme(), VarDefAST.Type, nil)
 	// check if the assigned type was correct
 	if VarDefAST.Assignment != nil {
+		// first infer the type of the variable, and check if it matches the declared type
+		// if it doesn't match, see if we can cast it
 		if t := InferType(VarDefAST.Assignment, checker.SymTable); t != VarDefAST.Type {
-			if !CastValue(VarDefAST.Type, VarDefAST.Assignment){
+			if !Cast(VarDefAST.Type, VarDefAST.Assignment) {
 				checker.Compiler.Critical(checker.Reporter, ERR_INVALID_TYPE, "types do not match")
 			}
 		}
@@ -156,11 +155,11 @@ func (checker *Checker) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 }
 
 func (checker *Checker) VisitBlockAST(BlockAST *BlockAST) interface{} {
-	checker.SymTable = checker.SymTable.NewScope()
+	checker.SymTable.NewScope("block_body")
 	for _, stmt := range BlockAST.Statements {
 		stmt.Visit(checker)
 	}
-	checker.SymTable = checker.SymTable.PopScope()
+	checker.SymTable.PopScope()
 	return nil
 }
 

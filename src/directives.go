@@ -14,7 +14,7 @@ func ProcessDirectives(compiler *Compiler, tokens []*Token) []*Token {
 	directives := Directives{
 		Compiler: compiler,
 		Consumer: consumer,
-		SymTable: NewSymTable(nil),
+		SymTable: NewSymTable(),
 	}
 
 	result := directives.Run()

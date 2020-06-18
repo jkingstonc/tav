@@ -45,9 +45,18 @@ type TavValue struct {
 
 type TavType struct {
 	Type        uint32
-	Instance    string   // store the identifier of the instance we are referencing
+	Instance    string // store the identifier of the instance we are referencing
 	Indirection int8
 	RetType     *TavType // used for function calls
+}
+
+func NewTavType(Typ uint32, Instance string, Indirection int8, RetType *TavType) TavType {
+	return TavType{
+		Type:        Typ,
+		Instance:    Instance,
+		Indirection: Indirection,
+		RetType:     RetType,
+	}
 }
 
 func (TavType TavType) IsInt() bool {
@@ -128,16 +137,16 @@ func ConvertType(tavType TavType, SymTable *SymTable) types.Type {
 	case TYPE_STRING:
 		return types.I8Ptr
 	case TYPE_INSTANCE:
-		v:=SymTable.Get(tavType.Instance).Value
+		v := SymTable.Get(tavType.Instance).Value
 		return v.(types.Type)
 	}
 	return types.Void
 }
 
-func InvertPtrType(tavType TavType, direction int8) TavType{
+func InvertPtrType(tavType TavType, direction int8) TavType {
 	return TavType{
 		Type:        tavType.Type,
-		Indirection: tavType.Indirection+direction,
+		Indirection: tavType.Indirection + direction,
 		RetType:     tavType.RetType,
 	}
 }
@@ -181,18 +190,22 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 	case *StructGetAST:
 		// get the name of the struct that we are referencing
 		s := InferType(e.Struct, SymTable).Instance
-		// now get the struct entry in the symtable
-		t := SymTable.Get(s)
+		// now we know that the struct stores its members in a symbol table entry called
+		// structname_members
+		structSymName := s + "_members"
+		// get the symbol table for the struct
+		sym := SymTable.Get(structSymName)
+		t := sym.Value.(*Scope)
 		if t != nil {
 			// get the structs member symbol table and access the member
 			// finally get the type of the member in that symtable
-			return t.SymTable.Get(e.Member.Lexme()).Type
+			return t.Get(e.Member.Lexme()).Type
 		}
 		break
 	case *VarDefAST:
 		return e.Type
 	}
-	// this is unreachable
+	// this is unreachable (in theory)
 	return TavType{}
 }
 
@@ -216,9 +229,8 @@ func JoinInfered(type1, type2 TavType) TavType {
 	return type1
 }
 
-
 // check if 2 types are able to be cast
-func Compatible(t1, t2 TavType) bool{
+func Compatible(t1, t2 TavType) bool {
 	// TODO fix this so it accomodates strings as they are pointers
 	//// 2 types are immediately not compatible if they have different pointer indirections
 	//if t1.Indirection != t2.Indirection{
@@ -226,28 +238,35 @@ func Compatible(t1, t2 TavType) bool{
 	//}
 	// check integers
 	if (t1.Type == TYPE_I8 || t1.Type == TYPE_I16 || t1.Type == TYPE_I32 || t1.Type == TYPE_I64) &&
-		(t2.Type == TYPE_I8 || t2.Type == TYPE_I16 || t2.Type == TYPE_I32 || t2.Type == TYPE_I64){
+		(t2.Type == TYPE_I8 || t2.Type == TYPE_I16 || t2.Type == TYPE_I32 || t2.Type == TYPE_I64) {
 		return true
-	// check floats
-	}else if (t1.Type == TYPE_F32 || t1.Type == TYPE_F64) && (t2.Type == TYPE_F32 || t2.Type == TYPE_F64) {
+		// check floats
+	} else if (t1.Type == TYPE_F32 || t1.Type == TYPE_F64) && (t2.Type == TYPE_F32 || t2.Type == TYPE_F64) {
+		return true
+	} else if (t1.Type == TYPE_I8 || t1.Type == TYPE_I16 || t1.Type == TYPE_I32 || t1.Type == TYPE_I64) &&
+		(t2.Type == TYPE_F32 || t2.Type == TYPE_F64) {
+		return true
+	} else if (t1.Type == TYPE_F32 || t1.Type == TYPE_F64) &&
+		(t2.Type == TYPE_I8 || t2.Type == TYPE_I16 || t2.Type == TYPE_I32 || t2.Type == TYPE_I64) {
 		return true
 	}
 
 	return false
 }
 
-
 // cast an expression to a certian type
 // TODO actually check if the cast is valid, this is very hacky
 // TODO also this probably shouldn't modify the expression, it may lead to some errors in code gen
+// TODO also make this work with other variables
 // as this is called in the checker
-func CastValue(tavType TavType, expression AST) bool{
-	switch e:=expression.(type){
-	case *LiteralAST:
-		if Compatible(tavType, e.Type){
-			e.Type = tavType
-		}
-		return true
-	}
-	return true
+func Cast(tavType TavType, expression AST) bool {
+	//switch e:=expression.(type){
+	//case *LiteralAST:
+	//	if Compatible(tavType, e.Type){
+	//		e.Type = tavType
+	//
+	//		return true
+	//	}
+	//}
+	return false
 }

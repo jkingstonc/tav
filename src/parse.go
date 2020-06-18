@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	ERR_UNEXPECTED_TOKEN    = 0x0
-	ERR_INVALID_TYPE 	    = 0x1
+	ERR_UNEXPECTED_TOKEN = 0x0
+	ERR_INVALID_TYPE     = 0x1
 )
 
 // buffer the current active directives so we can process the rest of the tokens
@@ -30,7 +30,7 @@ func Parse(compiler *Compiler, tokens []*Token) *RootAST {
 	parser := Parser{
 		Compiler: compiler,
 		Consumer: consumer,
-		SymTable: NewSymTable(nil),
+		SymTable: NewSymTable(),
 	}
 	parser.Root = parser.Run()
 	return parser.Root
@@ -57,16 +57,16 @@ func (parser *Parser) Prelim() AST {
 
 func (parser *Parser) Statement() AST {
 	var ast AST
-	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON){
-		ast =  parser.Define()
-	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN){
-		ast =  parser.QuickAssign()
-	} else if parser.Consumer.Expect(IDENTIFIER){
-		ast =  parser.Assignment()
+	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON) {
+		ast = parser.Define()
+	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN) {
+		ast = parser.QuickAssign()
+	} else if parser.Consumer.Expect(IDENTIFIER) {
+		ast = parser.Assignment()
 	} else if parser.Consumer.Consume(RETURN) != nil {
 		ast = parser.Return()
 	} else if parser.Consumer.Consume(BREAK) != nil {
-		ast =  parser.Break()
+		ast = parser.Break()
 	} else if parser.Consumer.Consume(FOR) != nil {
 		return parser.For()
 	} else if parser.Consumer.Consume(IF) != nil {
@@ -105,26 +105,21 @@ func (parser *Parser) If() AST {
 }
 
 func (parser *Parser) ParseStmtBlock() []AST {
-
-	parser.SymTable = parser.SymTable.NewScope()
-
+	parser.SymTable.NewScope("block_body")
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' at start of statement block")
 	var statements []AST
 	for !parser.Consumer.Expect(RIGHT_CURLY) && !parser.Consumer.End() {
 		statements = append(statements, parser.Statement())
 	}
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '}' at end of statement block")
-
-	parser.SymTable = parser.SymTable.PopScope()
-
+	parser.SymTable.PopScope()
 	return statements
 }
 
 // parse a struct
 func (parser *Parser) Struct(identifier *Token) AST {
-
-	parser.SymTable = parser.SymTable.NewScope()
-	memberSymTable := parser.SymTable
+	name := identifier.Lexme()
+	parser.SymTable.NewScope(name + "_members")
 
 	s := &StructAST{Identifier: identifier}
 	parser.Consumer.ConsumeErr(LEFT_CURLY, ERR_UNEXPECTED_TOKEN, "expected '{' after 'struct'")
@@ -132,38 +127,36 @@ func (parser *Parser) Struct(identifier *Token) AST {
 	for !parser.Consumer.Expect(RIGHT_CURLY) {
 		member := parser.Define().(*VarDefAST)
 		s.Fields = append(s.Fields, member)
-		memberSymTable.Add(member.Identifier.Lexme(), member.Type, 0,nil,nil)
 		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after member decleration")
 	}
 
 	parser.Consumer.ConsumeErr(RIGHT_CURLY, ERR_UNEXPECTED_TOKEN, "expected closing '}'")
-
-	parser.SymTable = parser.SymTable.PopScope()
+	parser.SymTable.PopScope()
 
 	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Lexme(), TavType{
-		Type:   TYPE_STRUCT,
-	}, 0, nil, memberSymTable)
+	parser.SymTable.Add(name, NewTavType(TYPE_STRUCT, "", 0, nil), nil)
 
 	return s
 }
 
 // parse a function
-func (parser *Parser) Fn(identifier *Token) AST {	// add the identifier to the current symbol table
+func (parser *Parser) Fn(identifier *Token) AST { // add the identifier to the current symbol table
+
+	name := identifier.Lexme()
 	f := &FnAST{Identifier: identifier, RetType: *parser.ParseType()}
 
-	parser.SymTable.Add(identifier.Lexme(), TavType{
-		Type:   TYPE_FN,
-		RetType: &f.RetType,
-	},  0, f, nil)
+	parser.SymTable.Add(name, NewTavType(TYPE_FN, "", 0, &f.RetType), nil)
 
+	// this may be an issue here... the problem is the paramaters and the function body are in different scopes
+
+	parser.SymTable.NewScope(name + "_body")
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 		var params []VarDefAST
 		// process the arguments
 		for !parser.Consumer.Expect(RIGHT_PAREN) {
 			// each paramater is essentially a variable decleration
 			params = append(params, *parser.Define().(*VarDefAST))
-			if parser.Consumer.Expect(RIGHT_PAREN){
+			if parser.Consumer.Expect(RIGHT_PAREN) {
 				break
 			}
 			parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between paramaters")
@@ -204,7 +197,7 @@ func (parser *Parser) Define() AST {
 			def.Assignment = parser.Expression()
 		}
 		// add the identifier to the current symbol table
-		parser.SymTable.Add(def.Identifier.Lexme(), def.Type, 0, nil, nil)
+		parser.SymTable.Add(def.Identifier.Lexme(), def.Type, nil)
 		return def
 	}
 }
@@ -224,8 +217,7 @@ func (parser *Parser) QuickAssign() AST {
 	// then infer the type of the expression
 	def.Type = InferType(def.Assignment, parser.SymTable)
 	// add the identifier to the current symbol table
-	parser.SymTable.Add(identifier.Lexme(), def.Type, 0, nil, nil)
-
+	parser.SymTable.Add(identifier.Lexme(), def.Type, nil)
 	return def
 }
 
@@ -234,12 +226,12 @@ func (parser *Parser) Expression() AST {
 	return parser.Assignment()
 }
 
-func (parser *Parser) Assignment() AST{
+func (parser *Parser) Assignment() AST {
 	higherPrecedence := parser.ConnectiveOr()
-	if parser.Consumer.Consume(ASSIGN)!=nil{
+	if parser.Consumer.Consume(ASSIGN) != nil {
 		assignValue := parser.ConnectiveOr()
 		// the only 2 types of assignments are to variables, and to struct members e.g. x = 2; or vec.x = 2;
-		switch ast := higherPrecedence.(type){
+		switch ast := higherPrecedence.(type) {
 		case *VariableAST:
 			return &VarSetAST{
 				Identifier: ast.Identifier,
@@ -250,16 +242,16 @@ func (parser *Parser) Assignment() AST{
 				Struct: ast.Struct,
 				Member: ast.Member,
 				Value:  assignValue,
-				Deref: ast.Deref,
+				Deref:  ast.Deref,
 			}
 		}
 	}
 	return higherPrecedence
 }
 
-func (parser *Parser) ConnectiveOr() AST{
+func (parser *Parser) ConnectiveOr() AST {
 	higherPrecedence := parser.ConnectiveAnd()
-	for parser.Consumer.Expect(OR){
+	for parser.Consumer.Expect(OR) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -269,9 +261,9 @@ func (parser *Parser) ConnectiveOr() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) ConnectiveAnd() AST{
+func (parser *Parser) ConnectiveAnd() AST {
 	higherPrecedence := parser.BitwiseOr()
-	for parser.Consumer.Expect(AND){
+	for parser.Consumer.Expect(AND) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -281,9 +273,9 @@ func (parser *Parser) ConnectiveAnd() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) BitwiseOr() AST{
+func (parser *Parser) BitwiseOr() AST {
 	higherPrecedence := parser.BitwiseAnd()
-	for parser.Consumer.Expect(BIN_OR){
+	for parser.Consumer.Expect(BIN_OR) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -293,9 +285,9 @@ func (parser *Parser) BitwiseOr() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) BitwiseAnd() AST{
+func (parser *Parser) BitwiseAnd() AST {
 	higherPrecedence := parser.Equality()
-	for parser.Consumer.Expect(BIN_AND){
+	for parser.Consumer.Expect(BIN_AND) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -305,9 +297,9 @@ func (parser *Parser) BitwiseAnd() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) Equality() AST{
+func (parser *Parser) Equality() AST {
 	higherPrecedence := parser.Comparison()
-	for parser.Consumer.Expect(EQUALS) || parser.Consumer.Expect(NOT_EQUALS){
+	for parser.Consumer.Expect(EQUALS) || parser.Consumer.Expect(NOT_EQUALS) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -317,9 +309,9 @@ func (parser *Parser) Equality() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) Comparison() AST{
+func (parser *Parser) Comparison() AST {
 	higherPrecedence := parser.BitwiseShift()
-	for parser.Consumer.Expect(GREAT_THAN) || parser.Consumer.Expect(GREAT_EQUAL) || parser.Consumer.Expect(LESS_THAN) || parser.Consumer.Expect(LESS_EQUAL){
+	for parser.Consumer.Expect(GREAT_THAN) || parser.Consumer.Expect(GREAT_EQUAL) || parser.Consumer.Expect(LESS_THAN) || parser.Consumer.Expect(LESS_EQUAL) {
 		return &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
@@ -329,7 +321,7 @@ func (parser *Parser) Comparison() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) BitwiseShift() AST{
+func (parser *Parser) BitwiseShift() AST {
 	higherPrecedence := parser.PlusMinus()
 	for parser.Consumer.Expect(SLEFT) || parser.Consumer.Expect(SRIGHT) {
 		return &BinaryAST{
@@ -341,12 +333,12 @@ func (parser *Parser) BitwiseShift() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) PlusMinus() AST{
+func (parser *Parser) PlusMinus() AST {
 	higherPrecedence := parser.MulDivModRem()
 	for parser.Consumer.Expect(PLUS) || parser.Consumer.Expect(MINUS) {
 		// TODO check here for compound assignment
 		// if parser.Consumer.Expect(ASSIGN){...}
-		b:=&BinaryAST{
+		b := &BinaryAST{
 			Left:     higherPrecedence,
 			Operator: parser.Consumer.Advance(),
 			Right:    parser.PlusMinus(),
@@ -356,7 +348,7 @@ func (parser *Parser) PlusMinus() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) MulDivModRem() AST{
+func (parser *Parser) MulDivModRem() AST {
 	higherPrecedence := parser.Unary()
 	// TODO implement modulo and no-remainder division
 	for parser.Consumer.Expect(STAR) || parser.Consumer.Expect(DIV) {
@@ -371,10 +363,10 @@ func (parser *Parser) MulDivModRem() AST{
 	return higherPrecedence
 }
 
-func (parser *Parser) Unary() AST{
+func (parser *Parser) Unary() AST {
 	// TODO implement increment and decrement
 	// connective not, bitwise not, increment, decrement
-	for parser.Consumer.Expect(BANG) || parser.Consumer.Expect(WIGGLE){
+	for parser.Consumer.Expect(BANG) || parser.Consumer.Expect(WIGGLE) {
 		return &UnaryAST{
 			Operator: parser.Consumer.Advance(),
 			Right:    parser.Unary(),
@@ -383,8 +375,8 @@ func (parser *Parser) Unary() AST{
 	return parser.Addressing()
 }
 
-func (parser *Parser) Addressing() AST{
-	if parser.Consumer.Expect(ADDR) || parser.Consumer.Expect(STAR){
+func (parser *Parser) Addressing() AST {
+	if parser.Consumer.Expect(ADDR) || parser.Consumer.Expect(STAR) {
 		return &UnaryAST{
 			Operator: parser.Consumer.Advance(),
 			Right:    parser.Addressing(),
@@ -393,17 +385,17 @@ func (parser *Parser) Addressing() AST{
 	return parser.Call()
 }
 
-func (parser *Parser) Call() AST{
+func (parser *Parser) Call() AST {
 	callee := parser.SingleVal()
 	// if the calle is a function e.g. 'main' and it doesn't have paramaters, it counts as a call
 	// we need some way of check
 
-	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN || parser.Consumer.Expect(LEFT_PAREN){
+	if InferType(callee, parser.SymTable).Type == TYPE_FN || InferType(callee, parser.SymTable).Type == TYPE_FN || parser.Consumer.Expect(LEFT_PAREN) {
 		var args []AST
-		if parser.Consumer.Consume(LEFT_PAREN) != nil{
+		if parser.Consumer.Consume(LEFT_PAREN) != nil {
 			for !parser.Consumer.Expect(RIGHT_PAREN) {
 				args = append(args, parser.Expression())
-				if parser.Consumer.Expect(RIGHT_PAREN){
+				if parser.Consumer.Expect(RIGHT_PAREN) {
 					break
 				}
 				parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between arguments")
@@ -414,54 +406,54 @@ func (parser *Parser) Call() AST{
 			Caller: callee,
 			Args:   args,
 		}
-	}else if parser.Consumer.Consume(PERIOD) != nil{
+	} else if parser.Consumer.Consume(PERIOD) != nil {
 		// struct member get
 		return &StructGetAST{
 			Struct: callee,
 			Member: parser.Consumer.ConsumeErr(IDENTIFIER, ERR_UNEXPECTED_TOKEN, "expected struct member"),
-			Deref : false,
+			Deref:  false,
 		}
-	}else if parser.Consumer.Consume(DEREF) != nil{
+	} else if parser.Consumer.Consume(DEREF) != nil {
 		// struct member dereference
 		return &StructGetAST{
 			Struct: callee,
 			Member: parser.Consumer.ConsumeErr(IDENTIFIER, ERR_UNEXPECTED_TOKEN, "expected struct member"),
-			Deref : true,
+			Deref:  true,
 		}
 	}
 
 	return callee
 }
 
-func (parser *Parser) SingleVal() AST{
-	if t:=parser.Consumer.Consume(IDENTIFIER); t!=nil{
+func (parser *Parser) SingleVal() AST {
+	if t := parser.Consumer.Consume(IDENTIFIER); t != nil {
 		return &VariableAST{Identifier: t}
-	}else if t:=parser.Consumer.Consume(NLITERAL); t!=nil{
+	} else if t := parser.Consumer.Consume(NLITERAL); t != nil {
 		// check if its a float
 		if strings.Contains(t.Value.(string), ".") {
 			value, err := strconv.ParseFloat(t.Value.(string), 64)
-			Assert(err==nil, "couldn't parse float string value")
+			Assert(err == nil, "couldn't parse float string value")
 			return &LiteralAST{
 				Type: TavType{
-					Type:   TYPE_F32,
+					Type: TYPE_F32,
 				},
 				Value: TavValue{
-					Float:  value,
+					Float: value,
 				},
 			}
-		}else{
+		} else {
 			value, err := strconv.ParseInt(t.Value.(string), 10, 64)
-			Assert(err==nil, "couldn't parse int string value")
+			Assert(err == nil, "couldn't parse int string value")
 			return &LiteralAST{
 				Type: TavType{
-					Type:   TYPE_I32,
+					Type: TYPE_I32,
 				},
 				Value: TavValue{
-					Int:    value,
+					Int: value,
 				},
 			}
 		}
-	}else if t:=parser.Consumer.Consume(SLITERAL);t!=nil{
+	} else if t := parser.Consumer.Consume(SLITERAL); t != nil {
 		// parse the string literal into a character array here
 		return &LiteralAST{
 			Type: TavType{
@@ -473,29 +465,29 @@ func (parser *Parser) SingleVal() AST{
 				String: []byte(t.Value.(string)),
 			},
 		}
-	}else if t:=parser.Consumer.Consume(TRUE);t!=nil{
+	} else if t := parser.Consumer.Consume(TRUE); t != nil {
 		return &LiteralAST{
 			Type: TavType{
-				Type:   TYPE_BOOL,
+				Type: TYPE_BOOL,
 			},
 			Value: TavValue{
-				Bool:   true,
+				Bool: true,
 			},
 		}
-	}else if t:=parser.Consumer.Consume(FALSE);t!=nil{
+	} else if t := parser.Consumer.Consume(FALSE); t != nil {
 		return &LiteralAST{
 			Type: TavType{
-				Type:   TYPE_BOOL,
+				Type: TYPE_BOOL,
 			},
 			Value: TavValue{
-				Bool:   false,
+				Bool: false,
 			},
 		}
-	}else if parser.Consumer.Consume(LEFT_PAREN) != nil{ // group expression e.g. (1+2)
+	} else if parser.Consumer.Consume(LEFT_PAREN) != nil { // group expression e.g. (1+2)
 		expression := parser.Expression()
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 		return &GroupAST{Group: expression}
-	}else{
+	} else {
 		parser.Compiler.Critical(parser.Consumer.Reporter, ERR_UNEXPECTED_TOKEN, "unexpected token")
 	}
 	return nil
@@ -505,19 +497,19 @@ func (parser *Parser) SingleVal() AST{
 // TODO Support user types e.g. struct
 func (parser *Parser) ParseType() *TavType {
 	typ := &TavType{
-		Type:   	 0,
+		Type:        0,
 		Instance:    "",
 		Indirection: 0,
-		RetType: 	 nil,
+		RetType:     nil,
 	}
 	// if it is a pointer, recursively get the pointer value
 	for parser.Consumer.Consume(STAR) != nil {
-		typ.Indirection+=1
+		typ.Indirection += 1
 	}
 	if t := parser.Consumer.Consume(TYPE); t != nil {
 		// it isn't a pointer, so get the type
 		typ.Type = t.Value.(uint32)
-	}else if t:=parser.Consumer.Consume(IDENTIFIER); t!= nil{
+	} else if t := parser.Consumer.Consume(IDENTIFIER); t != nil {
 		typ.Type = TYPE_INSTANCE
 		typ.Instance = t.Lexme()
 	}
