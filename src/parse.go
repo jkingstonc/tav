@@ -90,7 +90,7 @@ func (parser *Parser) Return() AST {
 }
 
 func (parser *Parser) Break() AST {
-	r := &ReturnAST{Value: parser.Expression()}
+	r := &BreakAST{}
 	return r
 }
 
@@ -100,8 +100,23 @@ func (parser *Parser) For() AST {
 }
 
 func (parser *Parser) If() AST {
-	r := &ReturnAST{Value: parser.Expression()}
-	return r
+	ifStmt := &IfAST{
+		IfCondition:   nil,
+		IfBody:        nil,
+		ElifCondition: nil,
+		ElifBody:      nil,
+		ElseBody:      nil,
+	}
+	ifStmt.IfCondition = parser.Expression()
+	ifStmt.IfBody = parser.Statement()
+	for parser.Consumer.Consume(ELIF)!=nil{
+		ifStmt.ElifCondition = append(ifStmt.ElifCondition,parser.Expression())
+		ifStmt.ElifBody = append(ifStmt.ElifBody,parser.Statement())
+	}
+	if parser.Consumer.Consume(ELSE)!=nil{
+		ifStmt.ElseBody = parser.Statement()
+	}
+	return ifStmt
 }
 
 func (parser *Parser) ParseStmtBlock() []AST {
@@ -147,8 +162,6 @@ func (parser *Parser) Fn(identifier *Token) AST { // add the identifier to the c
 
 	parser.SymTable.Add(name, NewTavType(TYPE_FN, "", 0, &f.RetType), nil)
 
-	// this may be an issue here... the problem is the paramaters and the function body are in different scopes
-
 	parser.SymTable.NewScope(name + "_body")
 	if parser.Consumer.Consume(LEFT_PAREN) != nil {
 		var params []VarDefAST
@@ -159,17 +172,23 @@ func (parser *Parser) Fn(identifier *Token) AST { // add the identifier to the c
 			if parser.Consumer.Expect(RIGHT_PAREN) {
 				break
 			}
-			parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between paramaters")
+			parser.Consumer.ConsumeErr(COMMA, ERR_UNEXPECTED_TOKEN, "expected ',' between parameters")
 		}
 		parser.Consumer.ConsumeErr(RIGHT_PAREN, ERR_UNEXPECTED_TOKEN, "expected closing ')'")
 		f.Params = params
 	}
-	if parser.Consumer.Expect(LEFT_CURLY) {
-		statements := parser.ParseStmtBlock()
+	var statements []AST
+	// parse the function body
+	// this is not a statement block, we need the paramaters and the body in the name scope
+	if parser.Consumer.Consume(LEFT_CURLY)!=nil {
+		for parser.Consumer.Consume(RIGHT_CURLY)==nil {
+			statements = append(statements, parser.Statement())
+		}
 		f.Body = statements
 	} else {
-		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after fn decleration")
+		parser.Consumer.ConsumeErr(SEMICOLON, ERR_UNEXPECTED_TOKEN, "expected ';' after fn deceleration")
 	}
+	f.Body = statements
 	return f
 }
 

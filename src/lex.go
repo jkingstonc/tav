@@ -347,6 +347,7 @@ func (lexer *Lexer) Identifier(r rune) bool {
 	return true
 }
 
+// TODO fix bug where we find the keyword, e.g. else even though the comparison is elif
 func (lexer *Lexer) CheckKeyword(keyword string, tok uint32, value interface{}) bool {
 	l := len(keyword)
 	// check if the length is greater than the source string

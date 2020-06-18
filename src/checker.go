@@ -70,6 +70,15 @@ func (checker *Checker) VisitForAST(ForAST *ForAST) interface{} {
 }
 
 func (checker *Checker) VisitIfAST(IfAST *IfAST) interface{} {
+	//IfAST.IfCondition.Visit(checker)
+	//IfAST.IfBody.Visit(checker)
+	//for i:=0; i< len(IfAST.ElifCondition);i++{
+	//	IfAST.ElifCondition[i].Visit(checker)
+	//	IfAST.ElifBody[i].Visit(checker)
+	//}
+	//if IfAST.ElseBody != nil {
+	//	IfAST.ElseBody.Visit(checker)
+	//}
 	return nil
 }
 
@@ -213,5 +222,5 @@ func (checker *Checker) VisitStructSetAST(StructSetAST *StructSetAST) interface{
 }
 
 func (checker *Checker) VisitGroupAST(GroupAST *GroupAST) interface{} {
-	return nil
+	return GroupAST.Group.Visit(checker)
 }

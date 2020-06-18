@@ -12,6 +12,7 @@ type Generator struct {
 	Root         *RootAST
 	Module       *ir.Module
 	CurrentBlock []*ir.Block
+	CurrentFn    *ir.Func
 	// the generator symbol table contains only value.Value
 	SymTable *SymTable
 	Compiler *Compiler
@@ -63,20 +64,17 @@ func (generator *Generator) VisitCastAST(CastAST *CastAST) interface{} {
 
 func (generator *Generator) VisitVarSetAST(VarSetAST *VarSetAST) interface{} {
 	variable := generator.SymTable.Get(VarSetAST.Identifier.Lexme()).Value
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
-	val := b.NewStore(VarSetAST.Value.Visit(generator).(value.Value), variable.(value.Value))
+	val := generator.Block().NewStore(VarSetAST.Value.Visit(generator).(value.Value), variable.(value.Value))
 	return val
 }
 
 func (generator *Generator) VisitReturnAST(ReturnAST *ReturnAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
-	b.NewRet(ReturnAST.Value.Visit(generator).(value.Value))
+	generator.Block().NewRet(ReturnAST.Value.Visit(generator).(value.Value))
 	return nil
 }
 
 func (generator *Generator) VisitBreakAST(BreakAST *BreakAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
-	b.NewBr(b)
+
 	return nil
 }
 
@@ -85,6 +83,33 @@ func (generator *Generator) VisitForAST(ForAST *ForAST) interface{} {
 }
 
 func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
+
+	ifCond:=generator.Block()
+	ifBody:=generator.CurrentFn.NewBlock("if_body")
+
+	var elifConditions []*ir.Block
+	var elifBodies 	   []*ir.Block
+
+	end:=generator.EnterBlock("end")
+
+
+
+	// we need to see if we can cast the ifCOndition to a types.I1
+	if len(elifConditions)>0 {
+		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, elifConditions[0])
+	}else{
+		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, end)
+	}
+
+
+	ifBody.NewBr(end)
+	for _, body := range elifBodies{
+		body.NewBr(end)
+	}
+
+	// enter the if condition
+	generator.Block().NewBr(ifCond)
+
 	return nil
 }
 
@@ -124,6 +149,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 
 	// create the function, the function body and visit the function block
 	f := generator.Module.NewFunc(identifier, ConvertType(FnAST.RetType, generator.SymTable), params...)
+	generator.CurrentFn = f
 	b := f.NewBlock(identifier + "_body")
 	generator.CurrentBlock = append(generator.CurrentBlock, b) // push the block to the stack
 	for _, stmt := range FnAST.Body {
@@ -138,7 +164,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 }
 
 func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b := generator.Block()
 	// allocate memory on the stack & then store the assignment
 	v := b.NewAlloca(ConvertType(VarDefAST.Type, generator.SymTable))
 	// if the variable assignment isn't nil, visit it and create an instruction to initialise the value
@@ -167,7 +193,7 @@ func (generator *Generator) VisitBlockAST(BlockAST *BlockAST) interface{} {
 }
 
 func (generator *Generator) VisitExprSmtAST(ExprStmtAST *ExprStmtAST) interface{} {
-	return nil
+	return ExprStmtAST.Expression.Visit(generator)
 }
 
 func (generator *Generator) VisitLiteralAST(LiteralAST *LiteralAST) interface{} {
@@ -182,7 +208,6 @@ func (generator *Generator) VisitListAST(ListAST *ListAST) interface{} {
 // TODO This means functions are not first class variables as you cannot cast them to value.Value
 func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface{} {
 	variable := generator.SymTable.Get(VariableAST.Identifier.Lexme())
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	// when returning variables, we have to check the value
 	// if the value is a function, we don't want to return a variable load instruction
 	// instead we want to directly return the function to call
@@ -197,13 +222,13 @@ func (generator *Generator) VisitVariableAST(VariableAST *VariableAST) interface
 	case *ir.Param:
 		return variable.Value
 	default:
-		val := b.NewLoad(ConvertType(variable.Type, generator.SymTable), variable.Value.(value.Value))
+		val := generator.Block().NewLoad(ConvertType(variable.Type, generator.SymTable), variable.Value.(value.Value))
 		return val
 	}
 }
 
 func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b := generator.Block()
 	right := UnaryAST.Right.Visit(generator) // if this is a variable, it is a load instruction
 	// we have to invert the pointers (e.g. from *i32 -> i32 and vice versa)
 	// the reason being the LLVM bindings want to see the target variable type
@@ -222,7 +247,7 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 }
 
 func (generator *Generator) VisitBinaryAST(BinaryAST *BinaryAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b := generator.Block()
 	left := BinaryAST.Left.Visit(generator).(value.Value)
 	right := BinaryAST.Right.Visit(generator).(value.Value)
 	switch BinaryAST.Operator.Type {
@@ -252,17 +277,16 @@ func (generator *Generator) VisitConnectiveAST(ConnectiveAST *ConnectiveAST) int
 }
 
 func (generator *Generator) VisitCallAST(CallAST *CallAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
 	callee := CallAST.Caller.Visit(generator)
 	var args []value.Value
 	for _, arg := range CallAST.Args {
 		args = append(args, arg.Visit(generator).(value.Value))
 	}
-	return b.NewCall(callee.(value.Value), args...)
+	return generator.Block().NewCall(callee.(value.Value), args...)
 }
 
 func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b := generator.Block()
 	s := StructGet.Struct.Visit(generator)
 	typeOfStruct := ConvertType(InferType(StructGet.Struct, generator.SymTable), generator.SymTable)
 	member := b.NewGetElementPtr(typeOfStruct, s.(value.Value), constant.NewInt(types.I32, 0), constant.NewInt(types.I32, 0))
@@ -274,7 +298,7 @@ func (generator *Generator) VisitStructGetAST(StructGet *StructGetAST) interface
 }
 
 func (generator *Generator) VisitStructSetAST(StructSetAST *StructSetAST) interface{} {
-	b := generator.CurrentBlock[len(generator.CurrentBlock)-1]
+	b := generator.Block()
 	s := StructSetAST.Struct.Visit(generator)
 	typeOfStruct := ConvertType(InferType(StructSetAST.Struct, generator.SymTable), generator.SymTable)
 
@@ -299,7 +323,7 @@ func (generator *Generator) CalcStructOffset(name, member string) int {
 }
 
 func (generator *Generator) VisitGroupAST(GroupAST *GroupAST) interface{} {
-	return nil
+	return GroupAST.Group.Visit(generator)
 }
 
 func Generate(compiler *Compiler, RootAST *RootAST) *ir.Module {
@@ -318,4 +342,23 @@ func Generate(compiler *Compiler, RootAST *RootAST) *ir.Module {
 func (generator *Generator) Run() *ir.Module {
 	generator.Root.Visit(generator)
 	return generator.Module
+}
+
+// generate a new generator scope by pushing a new symbol table scope and a new block
+func (generator *Generator) NewBlock(identifier string) *ir.Block{
+	block := generator.CurrentFn.NewBlock(identifier)
+	return block
+}
+
+func (generator *Generator) EnterBlock(identifier string) *ir.Block{
+	generator.CurrentBlock = append(generator.CurrentBlock, generator.NewBlock(identifier))
+	return generator.Block()
+}
+
+func (generator *Generator) ExitBlock(){
+	generator.CurrentBlock = generator.CurrentBlock[:len(generator.CurrentBlock)-1] // pop the block from the stack
+}
+
+func (generator *Generator) Block() *ir.Block{
+	return generator.CurrentBlock[len(generator.CurrentBlock)-1]
 }
