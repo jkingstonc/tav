@@ -204,6 +204,8 @@ func InferType(expression AST, SymTable *SymTable) TavType {
 		break
 	case *VarDefAST:
 		return e.Type
+	case *CastAST:
+		return e.TavType
 	}
 	// this is unreachable (in theory)
 	return TavType{}

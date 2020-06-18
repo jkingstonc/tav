@@ -26,6 +26,10 @@ func (directives *Directives) Run() []*Token {
 	for !directives.Consumer.End() {
 		t := directives.Consumer.Peek().Type
 		switch t {
+		case IMPORT:
+			directives.Import()
+		case RUN:
+			directives.RunJIT()
 		default:
 			directives.Consumer.Advance()
 			break
@@ -34,4 +38,12 @@ func (directives *Directives) Run() []*Token {
 	}
 
 	return directives.Consumer.Tokens
+}
+
+func (directives *Directives) Import(){
+	Log("import")
+}
+
+func (directives *Directives) RunJIT(){
+	Log("jit compile")
 }

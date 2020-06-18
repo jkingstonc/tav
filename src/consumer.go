@@ -86,9 +86,9 @@ func (parseConsumer *ParseConsumer) Peek() *Token {
 	return nil
 }
 
-func (parseConsumer *ParseConsumer) PeekAhead() *Token {
+func (parseConsumer *ParseConsumer) PeekAhead(ammount uint32) *Token {
 	if !parseConsumer.End() {
-		return parseConsumer.Tokens[parseConsumer.Counter+1]
+		return parseConsumer.Tokens[parseConsumer.Counter+ammount]
 	}
 	return nil
 }
@@ -100,9 +100,9 @@ func (parseConsumer *ParseConsumer) Expect(tokenType uint32) bool {
 	return false
 }
 
-func (parseConsumer *ParseConsumer) ExpectAhead(tokenType uint32) bool {
+func (parseConsumer *ParseConsumer) ExpectAhead(tokenType uint32, ammount uint32) bool {
 	if !parseConsumer.End() {
-		return parseConsumer.PeekAhead().Type == tokenType
+		return parseConsumer.PeekAhead(ammount).Type == tokenType
 	}
 	return false
 }

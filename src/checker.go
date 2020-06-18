@@ -45,6 +45,7 @@ func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
 }
 
 func (checker *Checker) VisitCastAST(CastAST *CastAST) interface{} {
+	CastAST.Expr.Visit(checker)
 	return nil
 }
 

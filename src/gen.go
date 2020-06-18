@@ -59,7 +59,29 @@ func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
 	return nil
 }
 
+// TODO read this https://mapping-high-level-constructs-to-llvm-ir.readthedocs.io/en/latest/basic-constructs/casts.html
 func (generator *Generator) VisitCastAST(CastAST *CastAST) interface{} {
+	b := generator.Block()
+	// if the type is a pointer, we perform a bitcast (this doesn't modify the bits in the value)
+	if CastAST.TavType.Indirection > 0{
+		return b.NewBitCast(CastAST.Expr.Visit(generator).(value.Value), ConvertType(CastAST.TavType, generator.SymTable))
+	}
+
+	// check which cast type we require by analysing the conversion pattern
+	from := CastAST.TavType
+	to   := InferType(CastAST.Expr, generator.SymTable)
+
+	if (from.Type == TYPE_I8 ||from.Type == TYPE_I16 || from.Type == TYPE_I32 || from.Type == TYPE_I32) &&
+		(to.Type == TYPE_F32 || to.Type == TYPE_F64){
+		return b.NewSIToFP(CastAST.Expr.Visit(generator).(value.Value), ConvertType(CastAST.TavType, generator.SymTable))
+	}
+
+	switch CastAST.TavType.Type{
+	case TYPE_I8:
+		return b.NewTrunc(CastAST.Expr.Visit(generator).(value.Value), ConvertType(CastAST.TavType, generator.SymTable))
+	case TYPE_F64:
+		return b.NewFPExt(CastAST.Expr.Visit(generator).(value.Value), ConvertType(CastAST.TavType, generator.SymTable))
+	}
 	return nil
 }
 
@@ -272,7 +294,6 @@ func (generator *Generator) VisitUnaryAST(UnaryAST *UnaryAST) interface{} {
 		return b.NewIntToPtr(right.(value.Value), inverted)
 	case STAR:
 		inverted := ConvertType(InvertPtrType(InferType(UnaryAST.Right, generator.SymTable), -1), generator.SymTable)
-		//return b.NewPtrToInt(right.(value.Value), inverted)
 		return b.NewPtrToInt(right.(value.Value), inverted)
 	}
 	return nil

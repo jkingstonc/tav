@@ -57,9 +57,9 @@ func (parser *Parser) Prelim() AST {
 
 func (parser *Parser) Statement() AST {
 	var ast AST
-	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON) {
+	if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(COLON,1) {
 		ast = parser.Define()
-	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN) {
+	} else if parser.Consumer.Expect(IDENTIFIER) && parser.Consumer.ExpectAhead(QUICK_ASSIGN,1) {
 		ast = parser.QuickAssign()
 	} else if parser.Consumer.Expect(IDENTIFIER) {
 		ast = parser.Assignment()
@@ -382,6 +382,7 @@ func (parser *Parser) MulDivModRem() AST {
 	return higherPrecedence
 }
 
+
 func (parser *Parser) Unary() AST {
 	// TODO implement increment and decrement
 	// connective not, bitwise not, increment, decrement
@@ -389,6 +390,20 @@ func (parser *Parser) Unary() AST {
 		return &UnaryAST{
 			Operator: parser.Consumer.Advance(),
 			Right:    parser.Unary(),
+		}
+	}
+	return parser.Casting()
+}
+
+func (parser *Parser) Casting() AST{
+	if parser.Consumer.Expect(LEFT_PAREN) && parser.IsType(parser.Consumer.PeekAhead(1)) && parser.Consumer.ExpectAhead(RIGHT_PAREN, 2){
+		Log("casting!")
+		parser.Consumer.Consume(LEFT_PAREN)
+		t := parser.ParseType()
+		parser.Consumer.Consume(RIGHT_PAREN)
+		return &CastAST{
+			TavType: *t,
+			Expr:    parser.Casting(),
 		}
 	}
 	return parser.Addressing()
@@ -533,4 +548,10 @@ func (parser *Parser) ParseType() *TavType {
 		typ.Instance = t.Lexme()
 	}
 	return typ
+}
+
+
+// returns true if the next token is a type
+func (parser *Parser) IsType(token *Token) bool{
+	return token.Type == IDENTIFIER || token.Type==TYPE
 }
