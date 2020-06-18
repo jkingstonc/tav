@@ -1,6 +1,7 @@
 package src
 
 import (
+	"fmt"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
 	"github.com/llir/llvm/ir/types"
@@ -84,27 +85,58 @@ func (generator *Generator) VisitForAST(ForAST *ForAST) interface{} {
 
 func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 
+	// first create the relevant blocks
 	ifCond:=generator.Block()
 	ifBody:=generator.CurrentFn.NewBlock("if_body")
 
 	var elifConditions []*ir.Block
 	var elifBodies 	   []*ir.Block
 
-	end:=generator.EnterBlock("end")
+	for i:=0; i<len(IfAST.ElifCondition);i++{
+		elifConditions = append(elifConditions,generator.NewBlock(fmt.Sprintf("elif_cond_%d", i)))
+		elifBodies = append(elifBodies,generator.NewBlock(fmt.Sprintf("elif_body_%d", i)))
+	}
 
+	var elseBody *ir.Block
+	if IfAST.ElseBody != nil{
+		elseBody = generator.NewBlock("else_body")
+	}
 
+	end:=generator.PushBlock(generator.NewBlock("end"))
 
-	// we need to see if we can cast the ifCOndition to a types.I1
-	if len(elifConditions)>0 {
+	// then enter the block instructions
+	// we need to see if we can cast the ifCondition to a types.I1
+
+	// process if
+	if len(elifConditions) > 0 {
 		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, elifConditions[0])
 	}else{
 		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, end)
 	}
-
-
+	generator.PushBlock(ifBody)
+	IfAST.IfBody.Visit(generator)
+	generator.ExitBlock()
 	ifBody.NewBr(end)
-	for _, body := range elifBodies{
-		body.NewBr(end)
+
+	// process elif
+	for i:=0; i<len(IfAST.ElifCondition);i++{
+		if i == len(IfAST.ElifCondition)-1{
+			elifConditions[i].NewCondBr(IfAST.ElifCondition[i].Visit(generator).(value.Value), elifBodies[i], end)
+		}else{
+			elifConditions[i].NewCondBr(IfAST.ElifCondition[i].Visit(generator).(value.Value), elifBodies[i], elifConditions[i+1])
+		}
+		generator.PushBlock(elifBodies[i])
+		IfAST.ElifBody[i].Visit(generator)
+		generator.ExitBlock()
+		elifBodies[i].NewBr(end)
+	}
+
+	// process else
+	if elseBody != nil {
+		generator.PushBlock(elseBody)
+		IfAST.ElseBody.Visit(generator)
+		generator.ExitBlock()
+		elseBody.NewBr(end)
 	}
 
 	// enter the if condition
@@ -350,9 +382,9 @@ func (generator *Generator) NewBlock(identifier string) *ir.Block{
 	return block
 }
 
-func (generator *Generator) EnterBlock(identifier string) *ir.Block{
-	generator.CurrentBlock = append(generator.CurrentBlock, generator.NewBlock(identifier))
-	return generator.Block()
+func (generator *Generator) PushBlock(block *ir.Block) *ir.Block{
+	generator.CurrentBlock = append(generator.CurrentBlock, block)
+	return block
 }
 
 func (generator *Generator) ExitBlock(){
