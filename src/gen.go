@@ -17,6 +17,7 @@ type Generator struct {
 	// the generator symbol table contains only value.Value
 	SymTable *SymTable
 	Compiler *Compiler
+	FnBlockCount uint32
 }
 
 func (Generator *Generator) PutsProto() *ir.Func {
@@ -112,61 +113,60 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 
 	// first create the relevant blocks
 	ifCond:=generator.Block()
-	ifBody:=generator.CurrentFn.NewBlock("if_body")
+	ifBody:=generator.NewBlock(fmt.Sprintf("if_body_%d",generator.FnBlockCount));
 
 	var elifConditions []*ir.Block
 	var elifBodies 	   []*ir.Block
 
 	for i:=0; i<len(IfAST.ElifCondition);i++{
-		elifConditions = append(elifConditions,generator.NewBlock(fmt.Sprintf("elif_cond_%d", i)))
-		elifBodies = append(elifBodies,generator.NewBlock(fmt.Sprintf("elif_body_%d", i)))
+		elifConditions = append(elifConditions,generator.NewBlock(fmt.Sprintf("elif_cond_%d_%d", i, generator.FnBlockCount)))
+		elifBodies = append(elifBodies,generator.NewBlock(fmt.Sprintf("elif_body_%d_%d", i, generator.FnBlockCount)))
 	}
 
 	var elseBody *ir.Block
 	if IfAST.ElseBody != nil{
-		elseBody = generator.NewBlock("else_body")
+		elseBody = generator.NewBlock(fmt.Sprintf("else_body_%d",generator.FnBlockCount))
 	}
 
-	end:=generator.PushBlock(generator.NewBlock("end"))
+	end:=generator.NewBlock(fmt.Sprintf("end_%d", generator.FnBlockCount))
 
-	// then enter the block instructions
-	// we need to see if we can cast the ifCondition to a types.I1
-
-	// process if
 	if len(elifConditions) > 0 {
 		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, elifConditions[0])
 	}else{
 		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, end)
 	}
+	// process if body
 	generator.PushBlock(ifBody)
 	IfAST.IfBody.Visit(generator)
-	generator.ExitBlock()
 	ifBody.NewBr(end)
+	generator.ExitBlock()
 
 	// process elif
 	for i:=0; i<len(IfAST.ElifCondition);i++{
+		generator.PushBlock(elifConditions[i])
 		if i == len(IfAST.ElifCondition)-1{
 			elifConditions[i].NewCondBr(IfAST.ElifCondition[i].Visit(generator).(value.Value), elifBodies[i], end)
 		}else{
 			elifConditions[i].NewCondBr(IfAST.ElifCondition[i].Visit(generator).(value.Value), elifBodies[i], elifConditions[i+1])
 		}
+		generator.ExitBlock()
 		generator.PushBlock(elifBodies[i])
 		IfAST.ElifBody[i].Visit(generator)
-		generator.ExitBlock()
 		elifBodies[i].NewBr(end)
+		generator.ExitBlock()
 	}
 
 	// process else
 	if elseBody != nil {
 		generator.PushBlock(elseBody)
 		IfAST.ElseBody.Visit(generator)
-		generator.ExitBlock()
 		elseBody.NewBr(end)
+		generator.ExitBlock()
 	}
 
 	// enter the if condition
-	generator.Block().NewBr(ifCond)
-
+	//generator.Block().NewBr(ifCond)
+	generator.PushBlock(end)
 	return nil
 }
 
@@ -418,6 +418,7 @@ func (generator *Generator) Run() *ir.Module {
 // generate a new generator scope by pushing a new symbol table scope and a new block
 func (generator *Generator) NewBlock(identifier string) *ir.Block{
 	block := generator.CurrentFn.NewBlock(identifier)
+	generator.FnBlockCount++;
 	return block
 }
 
