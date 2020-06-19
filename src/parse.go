@@ -492,11 +492,12 @@ func (parser *Parser) SingleVal() AST {
 		return &LiteralAST{
 			Type: TavType{
 				Type:        TYPE_STRING,
-				Indirection: 1,
+				// TODO this should probably be 1 as a string is just an *i8
+				Indirection: 0,
 				RetType:     nil,
 			},
 			Value: TavValue{
-				String: []byte(t.Value.(string)),
+				String: []byte(t.Value.(string)+"\000"),
 			},
 		}
 	} else if t := parser.Consumer.Consume(TRUE); t != nil {
@@ -528,14 +529,8 @@ func (parser *Parser) SingleVal() AST {
 }
 
 // parse a type
-// TODO Support user types e.g. struct
 func (parser *Parser) ParseType() *TavType {
-	typ := &TavType{
-		Type:        0,
-		Instance:    "",
-		Indirection: 0,
-		RetType:     nil,
-	}
+	typ :=NewTavType(TYPE_VOID, "", 0, nil)
 	// if it is a pointer, recursively get the pointer value
 	for parser.Consumer.Consume(STAR) != nil {
 		typ.Indirection += 1
@@ -547,7 +542,7 @@ func (parser *Parser) ParseType() *TavType {
 		typ.Type = TYPE_INSTANCE
 		typ.Instance = t.Lexme()
 	}
-	return typ
+	return &typ
 }
 
 

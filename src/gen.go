@@ -19,9 +19,9 @@ type Generator struct {
 	Compiler *Compiler
 }
 
-func (Generator *Generator) PrintfProto() *ir.Func {
-	f := Generator.Module.NewFunc("printf", types.I32, ir.NewParam("formatter", types.I8Ptr))
-	Generator.SymTable.Add("printf", NewTavType(TYPE_FN, "", 0, nil), f)
+func (Generator *Generator) PutsProto() *ir.Func {
+	f := Generator.Module.NewFunc("puts", types.I32, ir.NewParam("formatter", types.I8Ptr))
+	Generator.SymTable.Add("puts", NewTavType(TYPE_FN, "", 0, nil), f)
 	return f
 }
 
@@ -47,12 +47,15 @@ func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 		return constant.NewFloat(types.Float, TavValue.Float)
 	case TYPE_F64:
 		return constant.NewFloat(types.Double, TavValue.Float)
+	case TYPE_STRING:
+		//return constant.NewBitCast(constant.NewPtrToInt(constant.NewCharArray(TavValue.String), types.I8Ptr), types.I8Ptr)
+		return constant.NewCharArray(TavValue.String)
 	}
 	return nil
 }
 
 func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
-	generator.PrintfProto()
+	generator.PutsProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(generator)
 	}
@@ -198,7 +201,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	for _, param := range FnAST.Params {
 		p := ir.NewParam(param.Identifier.Lexme(), ConvertType(param.Type, generator.SymTable))
 		params = append(params, p)
-		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, nil)
+		generator.SymTable.Add(param.Identifier.Lexme(), param.Type, p)
 	}
 
 	// create the function, the function body and visit the function block
@@ -209,11 +212,14 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 	for _, stmt := range FnAST.Body {
 		stmt.Visit(generator)
 	}
+	if FnAST.RetType.Type == TYPE_VOID{
+		b.NewRet(nil)
+	}
 	generator.CurrentBlock = generator.CurrentBlock[:len(generator.CurrentBlock)-1] // pop the block from the stack
 
 	generator.SymTable.PopScope()
 	// finally add the function to the symbol table
-	generator.SymTable.Add(identifier, NewTavType(TYPE_FN, "", 0, &FnAST.RetType), nil)
+	generator.SymTable.Add(identifier, NewTavType(TYPE_FN, "", 0, &FnAST.RetType), f)
 	return f
 }
 
@@ -251,7 +257,19 @@ func (generator *Generator) VisitExprSmtAST(ExprStmtAST *ExprStmtAST) interface{
 }
 
 func (generator *Generator) VisitLiteralAST(LiteralAST *LiteralAST) interface{} {
-	return ValueFromType(LiteralAST.Type, LiteralAST.Value)
+	val := ValueFromType(LiteralAST.Type, LiteralAST.Value)
+	switch val.(type){
+	case *constant.CharArray:
+		// https://stackoverflow.com/questions/37901866/get-pointer-to-first-element-of-array-in-llvm-ir
+		//strPtr := generator.Block().NewAlloca(types.I8Ptr)
+		strArr := generator.Block().NewAlloca(types.NewArray(uint64(len(LiteralAST.Value.String)), types.I8))
+		// store the string constant in the string on the stack
+		generator.Block().NewStore(val, strArr)
+		bitcast := generator.Block().NewBitCast(strArr, types.I8Ptr)
+		//generator.Block().NewStore(bitcast, strPtr)
+		return bitcast
+	}
+	return val
 }
 
 func (generator *Generator) VisitListAST(ListAST *ListAST) interface{} {

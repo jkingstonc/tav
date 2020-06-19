@@ -10,24 +10,25 @@ const (
 	WARNING  = 0x0
 	CRITICAL = 0x1
 
-	TYPE_SYM_TABLE uint32 = 0x0
-	TYPE_U8        uint32 = 0x1
-	TYPE_I8        uint32 = 0x2
-	TYPE_U16       uint32 = 0x3
-	TYPE_I16       uint32 = 0x4
-	TYPE_U32       uint32 = 0x5
-	TYPE_I32       uint32 = 0x6
-	TYPE_F32       uint32 = 0x7
-	TYPE_U64       uint32 = 0x8
-	TYPE_I64       uint32 = 0x9
-	TYPE_F64       uint32 = 0xA
-	TYPE_BOOL      uint32 = 0xB
-	TYPE_STRUCT    uint32 = 0xC
-	TYPE_INSTANCE  uint32 = 0xD // Instance of a struct
-	TYPE_STRING    uint32 = 0xE
-	TYPE_FN        uint32 = 0xF
-	TYPE_ANY       uint32 = 0x10
-	TYPE_NULL      uint32 = 0x11
+	TYPE_VOID	   uint32 = 0x0
+	TYPE_SYM_TABLE uint32 = 0x1
+	TYPE_U8        uint32 = 0x2
+	TYPE_I8        uint32 = 0x3
+	TYPE_U16       uint32 = 0x4
+	TYPE_I16       uint32 = 0x5
+	TYPE_U32       uint32 = 0x6
+	TYPE_I32       uint32 = 0x7
+	TYPE_F32       uint32 = 0x8
+	TYPE_U64       uint32 = 0x9
+	TYPE_I64       uint32 = 0xA
+	TYPE_F64       uint32 = 0xB
+	TYPE_BOOL      uint32 = 0xC
+	TYPE_STRUCT    uint32 = 0xD
+	TYPE_INSTANCE  uint32 = 0xE // Instance of a struct
+	TYPE_STRING    uint32 = 0xF
+	TYPE_FN        uint32 = 0x10
+	TYPE_ANY       uint32 = 0x11
+	TYPE_NULL      uint32 = 0x12
 )
 
 type File struct {

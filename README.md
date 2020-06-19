@@ -10,7 +10,7 @@ Tav is a statically typed, compiled language. It is heavily inspired by C, Go an
 
 ### Compile time function execution:
 As Tav use LLVM ir, functions can be JIT compiled, allowing for any function to be compiled at compile time.
-In C, a compile time square function would look like this:
+In C, a comppile time square function would look like this:
 	
 	#define SQUARE (x) (x*x)
 	int main(void)

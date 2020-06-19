@@ -15,9 +15,9 @@ type Checker struct {
 	Root     *RootAST
 }
 
-func (Checker *Checker) PrintfProto() {
+func (Checker *Checker) PutsProto() {
 	retType := NewTavType(TYPE_I32, "", 0, nil)
-	Checker.SymTable.Add("printf", NewTavType(TYPE_FN, "", 0, &retType), nil)
+	Checker.SymTable.Add("puts", NewTavType(TYPE_FN, "", 0, &retType), nil)
 }
 
 func Check(compiler *Compiler, RootAST *RootAST) *RootAST {
@@ -37,7 +37,7 @@ func (checker *Checker) Run() {
 }
 
 func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
-	checker.PrintfProto()
+	checker.PutsProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(checker)
 	}
