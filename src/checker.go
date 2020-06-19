@@ -15,6 +15,11 @@ type Checker struct {
 	Root     *RootAST
 }
 
+func (Checker *Checker) PrintfProto() {
+	retType := NewTavType(TYPE_I32, "", 0, nil)
+	Checker.SymTable.Add("printf", NewTavType(TYPE_FN, "", 0, &retType), nil)
+}
+
 func (Checker *Checker) PutsProto() {
 	retType := NewTavType(TYPE_I32, "", 0, nil)
 	Checker.SymTable.Add("puts", NewTavType(TYPE_FN, "", 0, &retType), nil)
@@ -37,6 +42,7 @@ func (checker *Checker) Run() {
 }
 
 func (checker *Checker) VisitRootAST(RootAST *RootAST) interface{} {
+	checker.PrintfProto()
 	checker.PutsProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(checker)
@@ -71,15 +77,6 @@ func (checker *Checker) VisitForAST(ForAST *ForAST) interface{} {
 }
 
 func (checker *Checker) VisitIfAST(IfAST *IfAST) interface{} {
-	//IfAST.IfCondition.Visit(checker)
-	//IfAST.IfBody.Visit(checker)
-	//for i:=0; i< len(IfAST.ElifCondition);i++{
-	//	IfAST.ElifCondition[i].Visit(checker)
-	//	IfAST.ElifBody[i].Visit(checker)
-	//}
-	//if IfAST.ElseBody != nil {
-	//	IfAST.ElseBody.Visit(checker)
-	//}
 	return nil
 }
 

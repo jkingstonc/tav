@@ -95,8 +95,11 @@ func (parser *Parser) Break() AST {
 }
 
 func (parser *Parser) For() AST {
-	r := &ReturnAST{Value: parser.Expression()}
-	return r
+	f := &ForAST{
+		Condition: parser.Expression(),
+		Body:      parser.Statement(),
+	}
+	return f
 }
 
 func (parser *Parser) If() AST {

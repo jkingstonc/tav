@@ -63,7 +63,10 @@ func (BreakAST *BreakAST) Visit(Visitor Visitor) interface{} {
 	return Visitor.VisitBreakAST(BreakAST)
 }
 
-type ForAST struct{}
+type ForAST struct{
+	Condition AST
+	Body      AST
+}
 
 func (ForAST *ForAST) Visit(Visitor Visitor) interface{} {
 	return Visitor.VisitForAST(ForAST)

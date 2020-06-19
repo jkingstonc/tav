@@ -20,8 +20,14 @@ type Generator struct {
 	FnBlockCount uint32
 }
 
+func (Generator *Generator) PrintfProto() *ir.Func {
+	f := Generator.Module.NewFunc("printf", types.I32, ir.NewParam("formatter", types.I8Ptr), ir.NewParam("value", types.I32))
+	Generator.SymTable.Add("printf", NewTavType(TYPE_FN, "", 0, nil), f)
+	return f
+}
+
 func (Generator *Generator) PutsProto() *ir.Func {
-	f := Generator.Module.NewFunc("puts", types.I32, ir.NewParam("formatter", types.I8Ptr))
+	f := Generator.Module.NewFunc("puts", types.I32, ir.NewParam("string", types.I8Ptr))
 	Generator.SymTable.Add("puts", NewTavType(TYPE_FN, "", 0, nil), f)
 	return f
 }
@@ -56,6 +62,7 @@ func ValueFromType(tavType TavType, TavValue TavValue) value.Value {
 }
 
 func (generator *Generator) VisitRootAST(RootAST *RootAST) interface{} {
+	generator.PrintfProto()
 	generator.PutsProto()
 	for _, statement := range RootAST.Statements {
 		statement.Visit(generator)
@@ -106,6 +113,29 @@ func (generator *Generator) VisitBreakAST(BreakAST *BreakAST) interface{} {
 }
 
 func (generator *Generator) VisitForAST(ForAST *ForAST) interface{} {
+	// first create the relevant blocks
+	forCond:=generator.NewBlock(fmt.Sprintf("for_cond_%d",generator.FnBlockCount));
+	forBody:=generator.NewBlock(fmt.Sprintf("for_body_%d",generator.FnBlockCount));
+	forEnd:=generator.NewBlock(fmt.Sprintf("for_end_%d",generator.FnBlockCount));
+
+	generator.PushBlock(forCond)
+	// TODO gcc doesn't seem to like this
+	forCond.NewCondBr(ForAST.Condition.Visit(generator).(value.Value), forBody, forEnd)
+	generator.ExitBlock()
+
+	generator.PushBlock(forBody)
+	generator.SymTable.NewScope(fmt.Sprintf("for_body_%d",generator.FnBlockCount))
+	ForAST.Body.Visit(generator)
+	forBody.NewBr(forCond)
+	generator.SymTable.PopScope()
+	generator.ExitBlock()
+
+	// branch to the for condition
+	generator.Block().NewBr(forCond)
+	// now we have finished the for
+	generator.PushBlock(forEnd)
+
+
 	return nil
 }
 
@@ -128,7 +158,7 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 		elseBody = generator.NewBlock(fmt.Sprintf("else_body_%d",generator.FnBlockCount))
 	}
 
-	end:=generator.NewBlock(fmt.Sprintf("end_%d", generator.FnBlockCount))
+	end:=generator.NewBlock(fmt.Sprintf("if_end_%d", generator.FnBlockCount))
 
 	if len(elifConditions) > 0 {
 		ifCond.NewCondBr(IfAST.IfCondition.Visit(generator).(value.Value), ifBody, elifConditions[0])
@@ -137,8 +167,10 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 	}
 	// process if body
 	generator.PushBlock(ifBody)
+	generator.SymTable.NewScope(fmt.Sprintf("if_body_%d",generator.FnBlockCount))
 	IfAST.IfBody.Visit(generator)
 	ifBody.NewBr(end)
+	generator.SymTable.PopScope()
 	generator.ExitBlock()
 
 	// process elif
@@ -150,18 +182,22 @@ func (generator *Generator) VisitIfAST(IfAST *IfAST) interface{} {
 			elifConditions[i].NewCondBr(IfAST.ElifCondition[i].Visit(generator).(value.Value), elifBodies[i], elifConditions[i+1])
 		}
 		generator.ExitBlock()
+		generator.SymTable.NewScope(fmt.Sprintf("elif_body_%d_%d", i, generator.FnBlockCount))
 		generator.PushBlock(elifBodies[i])
 		IfAST.ElifBody[i].Visit(generator)
 		elifBodies[i].NewBr(end)
+		generator.SymTable.PopScope()
 		generator.ExitBlock()
 	}
 
 	// process else
 	if elseBody != nil {
+		generator.SymTable.NewScope(fmt.Sprintf("else_body_%d",generator.FnBlockCount))
 		generator.PushBlock(elseBody)
 		IfAST.ElseBody.Visit(generator)
 		elseBody.NewBr(end)
 		generator.ExitBlock()
+		generator.SymTable.PopScope()
 	}
 
 	// enter the if condition
