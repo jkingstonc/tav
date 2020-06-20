@@ -1,7 +1,7 @@
 .idea/
 .vscode/
 examples/
-tmp/
+tavout/
 *.exe
 *.txt
 *.bat

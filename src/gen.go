@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/llir/llvm/ir"
 	"github.com/llir/llvm/ir/constant"
+	"github.com/llir/llvm/ir/enum"
 	"github.com/llir/llvm/ir/types"
 	"github.com/llir/llvm/ir/value"
 )
@@ -13,6 +14,8 @@ type Generator struct {
 	Root         *RootAST
 	Module       *ir.Module
 	CurrentBlock []*ir.Block
+	// block to branch to if we need to break out of a block
+	BreakBlock	 *ir.Block
 	CurrentFn    *ir.Func
 	// the generator symbol table contains only value.Value
 	SymTable *SymTable
@@ -108,7 +111,7 @@ func (generator *Generator) VisitReturnAST(ReturnAST *ReturnAST) interface{} {
 }
 
 func (generator *Generator) VisitBreakAST(BreakAST *BreakAST) interface{} {
-
+	generator.Block().NewBr(generator.BreakBlock)
 	return nil
 }
 
@@ -117,11 +120,13 @@ func (generator *Generator) VisitForAST(ForAST *ForAST) interface{} {
 	forCond:=generator.NewBlock(fmt.Sprintf("for_cond_%d",generator.FnBlockCount));
 	forBody:=generator.NewBlock(fmt.Sprintf("for_body_%d",generator.FnBlockCount));
 	forEnd:=generator.NewBlock(fmt.Sprintf("for_end_%d",generator.FnBlockCount));
-
 	generator.PushBlock(forCond)
 	// TODO gcc doesn't seem to like this
 	forCond.NewCondBr(ForAST.Condition.Visit(generator).(value.Value), forBody, forEnd)
 	generator.ExitBlock()
+
+
+	generator.BreakBlock = forEnd
 
 	generator.PushBlock(forBody)
 	generator.SymTable.NewScope(fmt.Sprintf("for_body_%d",generator.FnBlockCount))
@@ -249,7 +254,7 @@ func (generator *Generator) VisitFnAST(FnAST *FnAST) interface{} {
 		stmt.Visit(generator)
 	}
 	if FnAST.RetType.Type == TYPE_VOID{
-		b.NewRet(nil)
+		generator.Block().NewRet(nil)
 	}
 	generator.CurrentBlock = generator.CurrentBlock[:len(generator.CurrentBlock)-1] // pop the block from the stack
 
@@ -280,11 +285,15 @@ func (generator *Generator) VisitVarDefAST(VarDefAST *VarDefAST) interface{} {
 }
 
 func (generator *Generator) VisitBlockAST(BlockAST *BlockAST) interface{} {
+	b:=generator.NewBlock(fmt.Sprintf("block_%d",generator.FnBlockCount))
+	generator.PushBlock(b)
 	generator.SymTable.NewScope("block_body")
 	for _, stmt := range BlockAST.Statements {
 		stmt.Visit(generator)
 	}
 	generator.SymTable.PopScope()
+	generator.ExitBlock()
+	b.NewBr(generator.Block())
 	return nil
 }
 
@@ -375,6 +384,18 @@ func (generator *Generator) VisitBinaryAST(BinaryAST *BinaryAST) interface{} {
 		return b.NewMul(left, right)
 	case DIV:
 		return b.NewFDiv(left, right)
+	case EQUALS:
+		return b.NewICmp(enum.IPredEQ, left, right)
+	case NOT_EQUALS:
+		return b.NewICmp(enum.IPredNE, left, right)
+	case LESS_THAN:
+		return b.NewICmp(enum.IPredSLT, left, right)
+	case LESS_EQUAL:
+		return b.NewICmp(enum.IPredSLE, left, right)
+	case GREAT_THAN:
+		return b.NewICmp(enum.IPredSGT, left, right)
+	case GREAT_EQUAL:
+		return b.NewICmp(enum.IPredSGE, left, right)
 	}
 	return nil
 }
@@ -469,4 +490,9 @@ func (generator *Generator) ExitBlock(){
 
 func (generator *Generator) Block() *ir.Block{
 	return generator.CurrentBlock[len(generator.CurrentBlock)-1]
+}
+
+// one block up
+func (generator *Generator) PrevBlock() *ir.Block{
+	return generator.CurrentBlock[len(generator.CurrentBlock)-2]
 }

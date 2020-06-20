@@ -219,8 +219,11 @@ func (lexer *Lexer) NumberLiteral(r rune) bool {
 		s.WriteRune('0')
 	}
 	s.WriteRune(r)
-	for !lexer.Consumer.End() && (IsNum(lexer.Consumer.Peek()) || lexer.Consumer.Expect('.')) {
+	for !lexer.Consumer.End() && (IsNum(lexer.Consumer.Peek()) || lexer.Consumer.Expect('.') || lexer.Consumer.Expect('_')) {
 		n := lexer.Consumer.Advance()
+		if n == '_' {
+			continue
+		}
 		if n == '.' && hadPeriod == false {
 			hadPeriod = true
 		} else if n == '.' && hadPeriod == true {

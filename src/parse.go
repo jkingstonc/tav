@@ -500,7 +500,7 @@ func (parser *Parser) SingleVal() AST {
 				RetType:     nil,
 			},
 			Value: TavValue{
-				String: []byte(t.Value.(string)+"\000"),
+				String: []byte(t.Value.(string)+"\000\n"),
 			},
 		}
 	} else if t := parser.Consumer.Consume(TRUE); t != nil {

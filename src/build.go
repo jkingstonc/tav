@@ -15,17 +15,19 @@ const (
 	SUCCESS_COMP uint8 = 0x0
 	SUCCESS_JIT  uint8 = 0x1
 	FAIL_COMP    uint8 = 0x2
+
+	TAV_OUT = "tavout/"
 )
 
-func BuildExe(module *ir.Module) uint8 {
-	ioutil.WriteFile("tmp/test.ll", []byte(module.String()), 0644)
-	c := exec.Command("llc", "tmp/test.ll")
+func BuildExe(filename string, module *ir.Module) uint8 {
+	ioutil.WriteFile(TAV_OUT+filename+".ll", []byte(module.String()), 0644)
+	c := exec.Command("llc", TAV_OUT+filename+".ll")
 	err := c.Run()
 	Log("llc err",err)
-	c = exec.Command("gcc", "-c", "tmp/test.s", "-o", "tmp/test.o")
+	c = exec.Command("gcc", "-c", TAV_OUT+filename+".s", "-o", TAV_OUT+filename+".o")
 	err = c.Run()
 	Log("gcc o err",err)
-	c = exec.Command("gcc", "tmp/test.o", "-o", "tmp/test")
+	c = exec.Command("gcc", TAV_OUT+filename+".o", "-o", TAV_OUT+filename+".exe")
 	err = c.Run()
 	Log("gcc exe err",err)
 	return SUCCESS_COMP
