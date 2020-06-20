@@ -5,6 +5,10 @@ Tav is a statically typed, compiled language. It is heavily inspired by C, Go an
 	main : fn i32{
 		x := 123;
 		y i32 = x * 2;
+		
+		s string := "hello world";
+		puts(s);
+		
 		ret y;
 	}
 
